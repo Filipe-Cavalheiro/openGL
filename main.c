@@ -4,6 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
+#include "port.c"
 
 #define PI 3.14159265359
 #define FOV PI/4
@@ -37,7 +38,26 @@ float lastY =  300.0f;
 float deltaTime = 0;
 float lastFrame = 0;
 
-int main(){
+int main(){ 
+    int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_SYNC );
+    if (fd < 0){
+        fprintf(stderr, "error %d opening %s: %s", errno, PORTNAME, strerror (errno));
+        return -1;
+    }
+
+    //set_interface_attribs (fd);    // set speed to 9600 bps, 8N1 (no parity)
+
+    char buf [128];
+    uint8_t bytes_read;
+
+    //soft restart the atmega328p
+    char kickstart = '1';
+    write(fd, &kickstart, sizeof(kickstart));
+
+    memset(buf, '\0', sizeof(buf)); 
+    bytes_read = read(fd, buf, sizeof buf);
+    printf("N bytes: %d Output: %s", bytes_read, buf);
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
