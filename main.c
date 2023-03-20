@@ -19,6 +19,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
 
+struct cube{
+    int cubePositions[3] = {0,0,0};
+    int cubeSize[3] = {1,1,1};
+    void* nextCube;
+}
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -39,6 +45,7 @@ float deltaTime = 0;
 float lastFrame = 0;
 
 int main(){ 
+    /*
     int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_SYNC );
     if (fd < 0){
         fprintf(stderr, "error %d opening %s: %s", errno, PORTNAME, strerror (errno));
@@ -57,7 +64,7 @@ int main(){
     memset(buf, '\0', sizeof(buf)); 
     bytes_read = read(fd, buf, sizeof buf);
     printf("N bytes: %d Output: %s", bytes_read, buf);
-
+    */
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -151,9 +158,21 @@ int main(){
         -BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
         -BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f
     };
+
     vec3 cubePositions[] = {
         { 0.0f,  0.0f,  0.0f}, 
+        { 1.0f,  1.0f, -4.0f}, 
+        { 0.0f, -2.0f, -1.0f}, 
+        { 2.0f,  0.0f, -3.0f}, 
     };
+
+    vec3 cubeSize[] = {
+        { 1.0f,  1.0f,  1.0f}, 
+        { 1.0f,  1.0f,  4.0f}, 
+        { 1.0f,  2.0f,  1.0f}, 
+        { 2.0f,  1.0f,  3.0f}, 
+    };
+
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -285,8 +304,7 @@ int main(){
             // calculate the model matrix for each object and pass it to shader before drawing
             glm_mat4_identity(matrix_model);
             glm_translate(matrix_model, cubePositions[i]);
-            angle = 20.0f * i;
-            glm_rotate(matrix_model, toRad(angle), (vec3){1.0f, 0.3f, 0.5f});
+            glm_scale(matrix_model, cubeSize[i]);
             modelLoc = glGetUniformLocation(shaderProgram, "model");
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
 
@@ -410,4 +428,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
 
 float toRad(float deg){
     return deg * (PI/180);
+}
+
+void makeCube(vec3 cord1, vec3 cord2){
+    
 }
