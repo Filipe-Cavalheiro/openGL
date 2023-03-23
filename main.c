@@ -14,16 +14,30 @@
 #define BOXLENGTH 0.5
 #define BOXHEIGHT 0.5
 
+typedef struct{
+    vec3 position;
+    vec3 size;
+}Cube;
+
+typedef struct{
+    Cube* cube;
+    void* next;
+}No;
+
+typedef struct{
+    int size;
+    No *head;
+    No *tail;
+}LinkedList;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
-
-struct cube{
-    int cubePositions[3] = {0,0,0};
-    int cubeSize[3] = {1,1,1};
-    void* nextCube;
-}
+Cube* makeCube(vec3 position, vec3 size); 
+No* makeNo(vec3 position, vec3 size);
+LinkedList* makeLinkedList();
+int addCube(LinkedList *linkedList, vec3 position, vec3 size);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -65,6 +79,16 @@ int main(){
     bytes_read = read(fd, buf, sizeof buf);
     printf("N bytes: %d Output: %s", bytes_read, buf);
     */
+    
+    LinkedList *linkedList = makeLinkedList();
+    if(linkedList == NULL) return 1;
+    vec3 pos = {0,0,0};
+    vec3 size = {1,1,1};
+    addCube(linkedList, pos, size); 
+    vec3 pos1 = {1,1.5,1};
+    vec3 size1 = {1,2,1};
+    addCube(linkedList, pos1, size1); 
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -159,20 +183,6 @@ int main(){
         -BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f
     };
 
-    vec3 cubePositions[] = {
-        { 0.0f,  0.0f,  0.0f}, 
-        { 1.0f,  1.0f, -4.0f}, 
-        { 0.0f, -2.0f, -1.0f}, 
-        { 2.0f,  0.0f, -3.0f}, 
-    };
-
-    vec3 cubeSize[] = {
-        { 1.0f,  1.0f,  1.0f}, 
-        { 1.0f,  1.0f,  4.0f}, 
-        { 1.0f,  2.0f,  1.0f}, 
-        { 2.0f,  1.0f,  3.0f}, 
-    };
-
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -257,9 +267,22 @@ int main(){
     float angle;
     float currentFrame;
     vec3 cameraTemp;
-
+    No *no;
+    double lastTime = glfwGetTime();
+    int nbFrames = 0;
+    double currentTime;
 
     while (!glfwWindowShouldClose(window)){
+        //fps counter
+        currentTime = glfwGetTime();
+        nbFrames++;
+        if ( currentTime - lastTime >= 1.0 ){ // If last prinf() was more than 1 sec ago
+                                              // printf and reset timer
+            printf("%d fps\n", nbFrames);
+            nbFrames = 0;
+            lastTime += 1.0;
+        }
+
         // per-frame time logic
         // --------------------
         currentFrame = glfwGetTime();
@@ -300,17 +323,17 @@ int main(){
 
         //render
         glBindVertexArray(VAO);
-        for (int i = 0; i < (sizeof(cubePositions)/sizeof(vec3)); i++){
+        no = linkedList->head;
+        while(no != NULL){
             // calculate the model matrix for each object and pass it to shader before drawing
             glm_mat4_identity(matrix_model);
-            glm_translate(matrix_model, cubePositions[i]);
-            glm_scale(matrix_model, cubeSize[i]);
+            glm_translate(matrix_model, no->cube->position);
+            glm_scale(matrix_model, no->cube->size);
             modelLoc = glGetUniformLocation(shaderProgram, "model");
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-
             glDrawArrays(GL_TRIANGLES, 0, 36);
+            no = no->next;
         }
-
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -430,6 +453,43 @@ float toRad(float deg){
     return deg * (PI/180);
 }
 
-void makeCube(vec3 cord1, vec3 cord2){
-    
+Cube* makeCube(vec3 position, vec3 size){ 
+    Cube *cube = (Cube*)malloc(sizeof(Cube));
+    glm_vec3_copy(position ,cube->position);
+    glm_vec3_copy(size ,cube->size);
+    return cube;
+}
+
+No* makeNo(vec3 position, vec3 size){ 
+    No *no = (No*)malloc(sizeof(No)); 
+    no->cube = makeCube(position, size);
+    no->next = NULL;
+    return no;
+}
+
+LinkedList* makeLinkedList(){ 
+    LinkedList *linkedList = (LinkedList*)malloc(sizeof(LinkedList));
+    linkedList->head = NULL;
+    linkedList->tail = NULL;
+    return linkedList;
+}
+
+int addCube(LinkedList *linkedList, vec3 position, vec3 size){
+    /*
+    vec3 size = {glm_vec3_distance(coord1, coord2), 1, 1};
+    vec3 position;
+    glm_vec3_add(coord1, coord2, position);
+    glm_vec3_divs(position, 2, position);
+    */
+    if(linkedList->head == NULL){
+        linkedList->head = makeNo(position, size);
+        if(linkedList->head == NULL) return 1;
+        linkedList->tail = linkedList->head;
+        return 0;
+    }
+    No *no = makeNo(position, size);
+    if(no == NULL) return 1;
+    linkedList->tail->next = no;
+    linkedList->tail = no;
+    return 0;
 }
