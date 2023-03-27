@@ -48,6 +48,11 @@ vec3 cameraPos    = {0.0f, 0.0f,  3.0f};
 vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
 vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
 
+//set up car
+vec3 carPos = {0,0,0};
+vec3 carSize = {1,1,1};
+float carAngle = 0;
+
 uint8_t firstMouse = 1;
 uint8_t debug = 0;
 float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
@@ -60,11 +65,11 @@ float lastFrame = 0;
 
 int main(){ 
     /*
-    int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_SYNC );
-    if (fd < 0){
-        fprintf(stderr, "error %d opening %s: %s", errno, PORTNAME, strerror (errno));
-        return -1;
-    }
+       int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_SYNC );
+       if (fd < 0){
+       fprintf(stderr, "error %d opening %s: %s", errno, PORTNAME, strerror (errno));
+       return -1;
+       }
 
     //set_interface_attribs (fd);    // set speed to 9600 bps, 8N1 (no parity)
 
@@ -79,15 +84,14 @@ int main(){
     bytes_read = read(fd, buf, sizeof buf);
     printf("N bytes: %d Output: %s", bytes_read, buf);
     */
-    
+
     LinkedList *linkedList = makeLinkedList();
-    if(linkedList == NULL) return 1;
-    vec3 pos = {0,0,0};
-    vec3 size = {1,1,1};
-    addCube(linkedList, pos, size); 
-    vec3 pos1 = {1,1.5,1};
-    vec3 size1 = {1,2,1};
-    addCube(linkedList, pos1, size1); 
+    if(linkedList == NULL){
+        fprintf(stderr, "Failed to create linkedList\n");
+        return -1;
+    }
+    addCube(linkedList, (vec3){1,1.5,1}, (vec3){1,2,1}); 
+    addCube(linkedList, (vec3){1,-2,0}, (vec3){1,1,0.5});
 
     // glfw: initialize and configure
     // ------------------------------
@@ -135,22 +139,22 @@ int main(){
     glUseProgram(shaderProgram);
     // dealocate memory
     glUseProgram(0);
-    
+
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
-        //pos                 //texture
-        -BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  0.0f, 0.0f,       //bottom face
-         BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  1.0f, 0.0f,
-         BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  1.0f, 1.0f,
-         BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  1.0f, 1.0f,
+        //pos                               //texture
+        -BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  0.0f, 0.0f,
+        BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  1.0f, 1.0f,
         -BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f,
         -BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  0.0f, 0.0f,
 
         -BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
-         BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  1.0f, 0.0f,
-         BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  1.0f, 1.0f,
-         BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  1.0f, 1.0f,
         -BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  0.0f, 1.0f,
         -BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
 
@@ -161,24 +165,24 @@ int main(){
         -BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
         -BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  1.0f, 0.0f,
 
-         BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
-         BOXLENGTH,   BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
-         BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  0.0f, 1.0f,
-         BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  0.0f, 1.0f,
-         BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  0.0f, 0.0f,
-         BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,   BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  0.0f, 1.0f,
+        BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  0.0f, 1.0f,
+        BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  0.0f, 0.0f,
+        BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
 
         -BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f,
-         BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
-         BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
-         BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,  -BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,  -BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
         -BOXLENGTH, -BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
         -BOXLENGTH, -BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f,
 
         -BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f,
-         BOXLENGTH,   BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
-         BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
-         BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,   BOXHEIGHT,-BOXWIDTH,  1.0f, 1.0f,
+        BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
+        BOXLENGTH,   BOXHEIGHT, BOXWIDTH,  1.0f, 0.0f,
         -BOXLENGTH,  BOXHEIGHT,  BOXWIDTH,  0.0f, 0.0f,
         -BOXLENGTH,  BOXHEIGHT, -BOXWIDTH,  0.0f, 1.0f
     };
@@ -186,7 +190,7 @@ int main(){
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    
+
     // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
     glBindVertexArray(VAO);
 
@@ -199,13 +203,10 @@ int main(){
     // texture coord attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
- 
+
     //Clean Up, free all Vertex Array Objects
     glBindVertexArray(0);
 
-    //call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
     // load and create a texture 
     // -------------------------
     int width, height, nrChannels;
@@ -216,7 +217,7 @@ int main(){
     glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
     glBindTexture(GL_TEXTURE_2D, texture0);
     glBindTexture(GL_TEXTURE_2D, texture0); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
-    // set the texture wrapping parameters
+                                            // set the texture wrapping parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     // set texture filtering parameters
@@ -236,7 +237,7 @@ int main(){
     glActiveTexture(GL_TEXTURE1); // activate the texture unit first before binding texture
     glBindTexture(GL_TEXTURE_2D, texture1);
     glBindTexture(GL_TEXTURE_2D, texture1); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
-    // set the texture wrapping parameters
+                                            // set the texture wrapping parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     // set texture filtering parameters
@@ -256,6 +257,12 @@ int main(){
     glUniform1i(glGetUniformLocation(shaderProgram, "texture0"), 0);
     glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 1);
 
+    // bind Texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+
     // render loop
     // -----------
     mat4 matrix_model;
@@ -270,24 +277,23 @@ int main(){
     No *no;
     double lastTime = glfwGetTime();
     int nbFrames = 0;
-    double currentTime;
 
     while (!glfwWindowShouldClose(window)){
-        //fps counter
-        currentTime = glfwGetTime();
-        nbFrames++;
-        if ( currentTime - lastTime >= 1.0 ){ // If last prinf() was more than 1 sec ago
-                                              // printf and reset timer
-            printf("%d fps\n", nbFrames);
-            nbFrames = 0;
-            lastTime += 1.0;
-        }
-
         // per-frame time logic
         // --------------------
         currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        //fps counter
+        nbFrames++;
+        if ( currentFrame - lastTime >= 1.0 ){ // If last prinf() was more than 1 sec ago
+                                               // printf and reset timer
+            printf("%d fps\n", nbFrames);
+            nbFrames = 0;
+            lastTime += 1.0;
+        }
+
 
         // input
         // -----
@@ -297,12 +303,6 @@ int main(){
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // bind Texture
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture1);
 
         //activate shaders
         glUseProgram(shaderProgram);
@@ -315,7 +315,7 @@ int main(){
 
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){
-           cameraTemp[i] = cameraPos[i] + cameraFront[i];
+            cameraTemp[i] = cameraPos[i] + cameraFront[i];
         }
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
         viewLoc = glGetUniformLocation(shaderProgram, "view");
@@ -323,6 +323,23 @@ int main(){
 
         //render
         glBindVertexArray(VAO);
+
+        //car
+        glm_mat4_identity(matrix_model);
+        glm_translate(matrix_model, carPos);
+        glm_scale(matrix_model, carSize);
+        mat4 matrix_tmp = {		
+            cos(carAngle), 0, -sin(carAngle), 0,
+            0, 1,           0, 0,
+            sin(carAngle), 0,  cos(carAngle), 0,
+            0, 0,           0, 1,
+        };
+        glm_mat4_mul(matrix_model,matrix_tmp,matrix_model);
+        modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        //walls
         no = linkedList->head;
         while(no != NULL){
             // calculate the model matrix for each object and pass it to shader before drawing
@@ -340,7 +357,7 @@ int main(){
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
+
     //dealocate memory
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
@@ -354,9 +371,9 @@ int main(){
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window){
     vec3 cameraTemp;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, 1);
-    
+    }
     float frameCameraSpeed = deltaTime * CAMERASPEED;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
         for(int i = 0; i < 3; ++i)
@@ -402,6 +419,19 @@ void processInput(GLFWwindow *window){
             usleep(60000); //debouncing 60ms
         }
     }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+        carPos[2] -= frameCameraSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
+        carPos[2] += frameCameraSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
+        carAngle += frameCameraSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
+        carAngle -= frameCameraSpeed;
+    }
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -475,12 +505,6 @@ LinkedList* makeLinkedList(){
 }
 
 int addCube(LinkedList *linkedList, vec3 position, vec3 size){
-    /*
-    vec3 size = {glm_vec3_distance(coord1, coord2), 1, 1};
-    vec3 position;
-    glm_vec3_add(coord1, coord2, position);
-    glm_vec3_divs(position, 2, position);
-    */
     if(linkedList->head == NULL){
         linkedList->head = makeNo(position, size);
         if(linkedList->head == NULL) return 1;
