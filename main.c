@@ -327,14 +327,14 @@ int main(){
         //car
         glm_mat4_identity(matrix_model);
         glm_translate(matrix_model, carPos);
-        glm_scale(matrix_model, carSize);
+        glm_scale(matrix_model, carSize);/*
         mat4 matrix_tmp = {		
             cos(carAngle), 0, -sin(carAngle), 0,
             0, 1,           0, 0,
             sin(carAngle), 0,  cos(carAngle), 0,
             0, 0,           0, 1,
         };
-        glm_mat4_mul(matrix_model,matrix_tmp,matrix_model);
+        glm_mat4_mul(matrix_model,matrix_tmp,matrix_model);*/
         modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -369,7 +369,7 @@ int main(){
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-void processInput(GLFWwindow *window){
+void processInput(GLFWwindow *window){/*
     vec3 cameraTemp;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, 1);
@@ -420,10 +420,12 @@ void processInput(GLFWwindow *window){
         }
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
-        carPos[2] -= frameCameraSpeed;
+            carPos[2] -= cos(carAngle) * frameCameraSpeed;
+            carPos[0] -= sin(carAngle) * frameCameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
-        carPos[2] += frameCameraSpeed;
+            carPos[2] += cos(carAngle) * frameCameraSpeed;
+            carPos[0] += sin(carAngle) * frameCameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
         carAngle += frameCameraSpeed;
@@ -431,7 +433,7 @@ void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
         carAngle -= frameCameraSpeed;
     }
-
+*/
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
