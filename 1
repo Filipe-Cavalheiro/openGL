@@ -22,11 +22,12 @@ typedef struct{
 }Cube;
 
 typedef struct{
-    void* data;
+    Cube* cube;
     void* next;
 }No;
 
 typedef struct{
+    int size;
     No *head;
     No *tail;
 }LinkedList;
@@ -43,11 +44,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
 Cube* makeCube(vec3 position, vec3 size); 
-No* makeNo(void* pointer2Struct);
+No* makeCubeNo(vec3 position, vec3 size);
 LinkedList* makeLinkedList();
 int addCube(LinkedList *linkedList, vec3 position, vec3 size);
-Character* makeCharacter(unsigned int texture,FT_Face face);
-void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, float scale, vec3 color);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -73,8 +72,6 @@ float lastY =  300.0f;
 float deltaTime = 0;
 float lastFrame = 0;
 
-unsigned int VAOText, VBOText;
-
 int main(){ 
     /*
        int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_SYNC );
@@ -95,50 +92,8 @@ int main(){
     memset(buf, '\0', sizeof(buf)); 
     bytes_read = read(fd, buf, sizeof buf);
     printf("N bytes: %d Output: %s", bytes_read, buf);
-    */ 
-    
-    LinkedList *cubesLinkedList = makeLinkedList();
-    if(cubesLinkedList == NULL){
-        fprintf(stderr, "Failed to create cubesLinkedList\n");
-        return -1;
-    }
-    addCube(cubesLinkedList, (vec3){1,1.5,1}, (vec3){1,2,1}); 
-    addCube(cubesLinkedList, (vec3){1,-2,0}, (vec3){1,1,0.5});
+    */
 
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL){
-        fprintf(stderr, "Failed to create GLFW window\n");
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    // tell GLFW to capture mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
-        fprintf(stderr, "Failed to initialize GLAD\n");
-        return -1;
-    }
-
-    // configure global opengl state
-    // -----------------------------
-    glEnable(GL_DEPTH_TEST);
-
-    // FreeType
-    // --------
     FT_Library ft;
     if (FT_Init_FreeType(&ft)){
         fprintf(stderr, "ERROR-FREETYPE: Could not init FreeType Library \n");
@@ -156,14 +111,8 @@ int main(){
         fprintf(stderr, "ERROR::FREETYTPE: Failed to load Glyph \n");  
         return -1;
     }
- 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
-                               
-    LinkedList *characterLinkedList = makeLinkedList();
-    if(characterLinkedList == NULL){
-        fprintf(stderr, "Failed to create characterLinkedList");
-        return -1;
-    }
+    
+    //glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
     for (unsigned char c = 0; c < 128; c++){
         // load character glyph 
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)){
@@ -190,45 +139,57 @@ int main(){
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
         // now store character for later use
-        makeNo(makeCharacter(texture, face));
+        makeCharacter();
+        Character *character = (Character*)malloc(sizeof(Character));
+        character->TextureID = texture;
+        glm_vec2_copy((vec2){face->glyph->bitmap.width, face->glyph->bitmap.rows}, character->Size),
+        glm_vec2_copy((vec2){face->glyph->bitmap_left, face->glyph->bitmap_top}, character->Bearing),
+        character->Advance = face->glyph->advance.x;
+        //Characters.insert(std::pair<char, Character>(c, character));
     }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    // destroy FreeType once we're finished
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
 
-    // configure VAO/VBO for texture quads (text)
-    // -----------------------------------
-    mat4 projection;
-    glm_ortho(0.0f, 800.0f, 0.0f, 600.0f, 0, 0, projection);
-    glGenVertexArrays(1, &VAOText);
-    glGenBuffers(1, &VBOText);
-    glBindVertexArray(VAOText);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOText);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    LinkedList *linkedList = makeLinkedList();
+    if(linkedList == NULL){
+        fprintf(stderr, "Failed to create linkedList\n");
+        return -1;
+    }
+    addCube(linkedList, (vec3){1,1.5,1}, (vec3){1,2,1}); 
+    addCube(linkedList, (vec3){1,-2,0}, (vec3){1,1,0.5});
 
-    // build and compile shader program (elements)
-    // ------------------------------------
-    GLuint text_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_vertex, GL_VERTEX_SHADER, "vertexText.glsl");
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLuint text_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_frag, GL_FRAGMENT_SHADER, "fragmentText.glsl");
+    // glfw window creation
+    // --------------------
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL){
+        fprintf(stderr, "Failed to create GLFW window\n");
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    // tell GLFW to capture our mouse
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    GLuint textShaderProgram = glCreateProgram();
-    link_shader(text_vertex, text_frag, textShaderProgram);
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
+        fprintf(stderr, "Failed to initialize GLAD\n");
+        return -1;
+    }
 
-    glUseProgram(textShaderProgram);
-    // dealocate memory
-    glUseProgram(0);
+    // configure global opengl state
+    // -----------------------------
+    glEnable(GL_DEPTH_TEST);
 
-    // build and compile shader program (elements)
+    // build and compile our shader program
     // ------------------------------------
     GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "vertex.glsl");
@@ -236,10 +197,10 @@ int main(){
     GLuint triangle_frag = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "fragment.glsl");
 
-    GLuint elementsShaderProgram = glCreateProgram();
-    link_shader(triangle_vertex, triangle_frag, elementsShaderProgram);
+    GLuint shaderProgram = glCreateProgram();
+    link_shader(triangle_vertex, triangle_frag, shaderProgram);
 
-    glUseProgram(elementsShaderProgram);
+    glUseProgram(shaderProgram);
     // dealocate memory
     glUseProgram(0);
 
@@ -356,9 +317,9 @@ int main(){
     else{fprintf(stderr, "Failed to load texture\n");}
     stbi_image_free(data);
 
-    glUseProgram(elementsShaderProgram);
-    glUniform1i(glGetUniformLocation(elementsShaderProgram, "texture0"), 0);
-    glUniform1i(glGetUniformLocation(elementsShaderProgram, "texture1"), 1);
+    glUseProgram(shaderProgram);
+    glUniform1i(glGetUniformLocation(shaderProgram, "texture0"), 0);
+    glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 1);
 
     // bind Texture
     glActiveTexture(GL_TEXTURE0);
@@ -408,12 +369,12 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //activate shaders
-        glUseProgram(elementsShaderProgram);
+        glUseProgram(shaderProgram);
 
         // camera/view transformation
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(elementsShaderProgram, "projection");
+        projectionLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
         glm_mat4_identity(matrix_view);
@@ -421,7 +382,7 @@ int main(){
             cameraTemp[i] = cameraPos[i] + cameraFront[i];
         }
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(elementsShaderProgram, "view");
+        viewLoc = glGetUniformLocation(shaderProgram, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         //render
@@ -438,18 +399,18 @@ int main(){
             0, 0,           0, 1,
         };
         glm_mat4_mul(matrix_model,matrix_tmp,matrix_model);
-        modelLoc = glGetUniformLocation(elementsShaderProgram, "model");
+        modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         //walls
-        no = cubesLinkedList->head;
+        no = linkedList->head;
         while(no != NULL){
             // calculate the model matrix for each object and pass it to shader before drawing
             glm_mat4_identity(matrix_model);
-            glm_translate(matrix_model, ((Cube*)no->data)->position);
-            glm_scale(matrix_model, ((Cube*)no->data)->size);
-            modelLoc = glGetUniformLocation(elementsShaderProgram, "model");
+            glm_translate(matrix_model, no->cube->position);
+            glm_scale(matrix_model, no->cube->size);
+            modelLoc = glGetUniformLocation(shaderProgram, "model");
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             no = no->next;
@@ -462,12 +423,9 @@ int main(){
     }
 
     //dealocate memory
-    glDeleteVertexArrays(1, &VAOText);
-    glDeleteBuffers(1, &VBOText);
-    glDeleteProgram(textShaderProgram);
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(elementsShaderProgram);
+    glDeleteProgram(shaderProgram);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
@@ -590,15 +548,6 @@ float toRad(float deg){
     return deg * (PI/180);
 }
 
-Character* makeCharacter(unsigned int texture,FT_Face face){ 
-    Character *character = (Character*)malloc(sizeof(Character));
-    character->TextureID = texture;
-    glm_vec2_copy((vec2){face->glyph->bitmap.width, face->glyph->bitmap.rows}, character->Size);
-    glm_vec2_copy((vec2){face->glyph->bitmap_left, face->glyph->bitmap_top}, character->Bearing);
-    character->Advance = face->glyph->advance.x;
-    return character;
-}
-
 Cube* makeCube(vec3 position, vec3 size){ 
     Cube *cube = (Cube*)malloc(sizeof(Cube));
     glm_vec3_copy(position ,cube->position);
@@ -606,9 +555,9 @@ Cube* makeCube(vec3 position, vec3 size){
     return cube;
 }
 
-No* makeNo(void* pointer2Struct){ 
+No* makeCubeNo(vec3 position, vec3 size){ 
     No *no = (No*)malloc(sizeof(No)); 
-    no->data = pointer2Struct;
+    no->cube = makeCube(position, size);
     no->next = NULL;
     return no;
 }
@@ -620,71 +569,32 @@ LinkedList* makeLinkedList(){
     return linkedList;
 }
 
-int addCharacter(LinkedList *linkedList, unsigned int texture, FT_Face face){
-    if(linkedList->head == NULL){
-        linkedList->head = makeNo(makeCharacter(texture, face));
-        if(linkedList->head == NULL) return 1;
-        linkedList->tail = linkedList->head;
-        return 0;
-    }
-    No *no = makeNo(makeCharacter(texture, face));
-    if(no == NULL) return 1;
-    linkedList->tail->next = no;
-    linkedList->tail = no;
-    return 0;
+Characters* makeCharacter(unsigned int texture,FT_face face){ 
+    Character *character = (Character*)malloc(sizeof(Character));
+    character->TextureID = texture;
+    glm_vec2_copy((vec2){face->glyph->bitmap.width, face->glyph->bitmap.rows}, character->Size);
+    glm_vec2_copy((vec2){face->glyph->bitmap_left, face->glyph->bitmap_top}, character->Bearing);
+    character->Advance = face->glyph->advance.x;
+    return character;
+}
+
+No* makeCharacterNo(unsigned int texture,TF_face face){ 
+    No *no = (No*)malloc(sizeof(No)); 
+    no->cube = makeCharacter(texture, face);
+    no->next = NULL;
+    return no;
 }
 
 int addCube(LinkedList *linkedList, vec3 position, vec3 size){
     if(linkedList->head == NULL){
-        linkedList->head = makeNo(makeCube(position, size));
+        linkedList->head = makeCubeNo(position, size);
         if(linkedList->head == NULL) return 1;
         linkedList->tail = linkedList->head;
         return 0;
     }
-    No *no = makeNo(makeCube(position, size));
+    No *no = makeCubeNo(position, size);
     if(no == NULL) return 1;
     linkedList->tail->next = no;
     linkedList->tail = no;
     return 0;
-}
-void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, float scale, vec3 color){
-    // activate corresponding render state	
-    glUniform3f(glGetUniformLocation(*shader, "textColor"), color[0], color[1], color[2]);
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(VAOText);
-
-    // iterate through all characters
-    No no = list->head;
-    while(no != NULL){
-        Character ch = (Character)no->data;
-
-        float xpos = x + ch.Bearing[0] * scale;
-        float ypos = y - (ch.Size[1] - ch.Bearing[1]) * scale;
-
-        float w = ch.Size[0] * scale;
-        float h = ch.Size[1] * scale;
-        // update VBO for each character
-        float vertices[6][4] = {
-            { xpos,     ypos + h,   0.0f, 0.0f },            
-            { xpos,     ypos,       0.0f, 1.0f },
-            { xpos + w, ypos,       1.0f, 1.0f },
-
-            { xpos,     ypos + h,   0.0f, 0.0f },
-            { xpos + w, ypos,       1.0f, 1.0f },
-            { xpos + w, ypos + h,   1.0f, 0.0f }           
-        };
-        // render glyph texture over quad
-        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-        // update content of VBO memory
-        glBindBuffer(GL_ARRAY_BUFFER, VBOText);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        // render quad
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
-        no = no->next;
-    }
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
