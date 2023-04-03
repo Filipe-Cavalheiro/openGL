@@ -47,7 +47,7 @@ No* makeNo(void* pointer2Struct);
 LinkedList* makeLinkedList();
 int addCube(LinkedList *linkedList, vec3 position, vec3 size);
 Character* makeCharacter(unsigned int texture,FT_Face face);
-void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, float y, float scale, vec3 color);
+void RenderText(LinkedList *linkedList, GLuint shader, char text[], float x, float y, float scale, vec3 color);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -213,7 +213,7 @@ int main(){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // build and compile shader program (elements)
+    // build and compile shader program (text)
     // ------------------------------------
     GLuint text_vertex = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&text_vertex, GL_VERTEX_SHADER, "vertexText.glsl");
@@ -228,6 +228,7 @@ int main(){
     // dealocate memory
     glUseProgram(0);
 
+    //render text for testing purporses
     // build and compile shader program (elements)
     // ------------------------------------
     GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
@@ -380,7 +381,7 @@ int main(){
     No *no;
     double lastTime = glfwGetTime();
     int nbFrames = 0;
-
+    
     while (!glfwWindowShouldClose(window)){
         // per-frame time logic
         // --------------------
@@ -426,7 +427,6 @@ int main(){
 
         //render
         glBindVertexArray(VAO);
-
         //car
         glm_mat4_identity(matrix_model);
         glm_translate(matrix_model, carPos);
@@ -647,9 +647,10 @@ int addCube(LinkedList *linkedList, vec3 position, vec3 size){
     linkedList->tail = no;
     return 0;
 }
-void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, float y, float scale, vec3 color){
+void RenderText(LinkedList *linkedList, GLuint shader, char text[], float x, float y, float scale, vec3 color){
+    perror("err");
     // activate corresponding render state	
-    glUniform3f(glGetUniformLocation(*shader, "textColor"), color[0], color[1], color[2]);
+    glUniform3f(glGetUniformLocation(shader, "textColor"), color[0], color[1], color[2]);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAOText);
 
@@ -659,12 +660,12 @@ void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, fl
         for(int j = 0; text[i]-j; ++j){
             no = no->next;
         }
-        Character *ch = (Character)(no->data);
-        float xpos = x + ch.Bearing[0] * scale;
-        float ypos = y - (ch.Size[1] - ch.Bearing[1]) * scale;
+        Character *ch = (Character*)(no->data);
+        float xpos = x + ch->Bearing[0] * scale;
+        float ypos = y - (ch->Size[1] - ch->Bearing[1]) * scale;
 
-        float w = ch.Size[0] * scale;
-        float h = ch.Size[1] * scale;
+        float w = ch->Size[0] * scale;
+        float h = ch->Size[1] * scale;
         // update VBO for each character
         float vertices[6][4] = {
             { xpos,     ypos + h,   0.0f, 0.0f },            
@@ -675,7 +676,7 @@ void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, fl
             { xpos + w, ypos + h,   1.0f, 0.0f }           
         };
         // render glyph texture over quad
-        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+        glBindTexture(GL_TEXTURE_2D, ch->TextureID);
         // update content of VBO memory
         glBindBuffer(GL_ARRAY_BUFFER, VBOText);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
@@ -683,7 +684,7 @@ void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, fl
         // render quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
         // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+        x += (ch->Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
     }
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
