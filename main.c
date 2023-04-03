@@ -47,7 +47,7 @@ No* makeNo(void* pointer2Struct);
 LinkedList* makeLinkedList();
 int addCube(LinkedList *linkedList, vec3 position, vec3 size);
 Character* makeCharacter(unsigned int texture,FT_Face face);
-void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, float scale, vec3 color);
+void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, float y, float scale, vec3 color);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -647,17 +647,19 @@ int addCube(LinkedList *linkedList, vec3 position, vec3 size){
     linkedList->tail = no;
     return 0;
 }
-void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, float scale, vec3 color){
+void RenderText(LinkedList *linkedList, GLuint *shader, char text[], float x, float y, float scale, vec3 color){
     // activate corresponding render state	
     glUniform3f(glGetUniformLocation(*shader, "textColor"), color[0], color[1], color[2]);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAOText);
 
     // iterate through all characters
-    No no = list->head;
-    while(no != NULL){
-        Character ch = (Character)no->data;
-
+    for(int i = 0; text[i] != '\0'; ++i){
+        No *no = linkedList->head;
+        for(int j = 0; text[i]-j; ++j){
+            no = no->next;
+        }
+        Character *ch = (Character)(no->data);
         float xpos = x + ch.Bearing[0] * scale;
         float ypos = y - (ch.Size[1] - ch.Bearing[1]) * scale;
 
@@ -668,7 +670,6 @@ void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, 
             { xpos,     ypos + h,   0.0f, 0.0f },            
             { xpos,     ypos,       0.0f, 1.0f },
             { xpos + w, ypos,       1.0f, 1.0f },
-
             { xpos,     ypos + h,   0.0f, 0.0f },
             { xpos + w, ypos,       1.0f, 1.0f },
             { xpos + w, ypos + h,   1.0f, 0.0f }           
@@ -683,7 +684,6 @@ void RenderText(LinkedList list, GLuint *shader, char text[], float x, float y, 
         glDrawArrays(GL_TRIANGLES, 0, 6);
         // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
         x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
-        no = no->next;
     }
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
