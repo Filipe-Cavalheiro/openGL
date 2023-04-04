@@ -8,8 +8,9 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#define PI 3.14159265359
-#define FOV PI/4
+#define SCR_WIDTH 800
+#define SCR_HEIGHT 600
+#define FOV M_PI/4
 #define CAMERASPEED 2.5
 #define SENSITIVITY 0.1
 #define BOXWIDTH 0.5
@@ -42,16 +43,16 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
-Cube* makeCube(vec3 position, vec3 size); 
 No* makeNo(void* pointer2Struct);
 LinkedList* makeLinkedList();
+Cube* makeCube(vec3 position, vec3 size); 
 int addCube(LinkedList *linkedList, vec3 position, vec3 size);
 Character* makeCharacter(unsigned int texture,FT_Face face);
+int addCharacter(LinkedList *linkedList, unsigned int texture, FT_Face face);
 void RenderText(LinkedList *linkedList, GLuint shader, char text[], float x, float y, float scale, vec3 color);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+//---------
 
 //set up camera
 vec3 cameraPos    = {0.0f, 0.0f,  3.0f};
@@ -192,12 +193,13 @@ int main(){
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // now store character for later use
-        makeNo(makeCharacter(texture, face));
+        addCharacter(characterLinkedList, texture, face);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     // destroy FreeType once we're finished
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // disable byte-alignment restriction
 
     // configure VAO/VBO for texture quads (text)
     // -----------------------------------
@@ -216,34 +218,26 @@ int main(){
     // build and compile shader program (text)
     // ------------------------------------
     GLuint text_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_vertex, GL_VERTEX_SHADER, "vertexText.glsl");
+    compile_shader(&text_vertex, GL_VERTEX_SHADER, "text.vs");
 
     GLuint text_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_frag, GL_FRAGMENT_SHADER, "fragmentText.glsl");
+    compile_shader(&text_frag, GL_FRAGMENT_SHADER, "text.fs");
 
-    GLuint textShaderProgram = glCreateProgram();
-    link_shader(text_vertex, text_frag, textShaderProgram);
-
-    glUseProgram(textShaderProgram);
-    // dealocate memory
-    glUseProgram(0);
+    GLuint textShader = glCreateProgram();
+    link_shader(text_vertex, text_frag, textShader); 
 
     //render text for testing purporses
     // build and compile shader program (elements)
     // ------------------------------------
     GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "vertex.glsl");
+    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "elements.vs");
 
     GLuint triangle_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "fragment.glsl");
+    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "elements.fs");
 
-    GLuint elementsShaderProgram = glCreateProgram();
-    link_shader(triangle_vertex, triangle_frag, elementsShaderProgram);
-
-    glUseProgram(elementsShaderProgram);
-    // dealocate memory
-    glUseProgram(0);
-
+    GLuint elementsShader = glCreateProgram();
+    link_shader(triangle_vertex, triangle_frag, elementsShader);
+    
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
@@ -357,9 +351,9 @@ int main(){
     else{fprintf(stderr, "Failed to load texture\n");}
     stbi_image_free(data);
 
-    glUseProgram(elementsShaderProgram);
-    glUniform1i(glGetUniformLocation(elementsShaderProgram, "texture0"), 0);
-    glUniform1i(glGetUniformLocation(elementsShaderProgram, "texture1"), 1);
+    glUseProgram(elementsShader);
+    glUniform1i(glGetUniformLocation(elementsShader, "texture0"), 0);
+    glUniform1i(glGetUniformLocation(elementsShader, "texture1"), 1);
 
     // bind Texture
     glActiveTexture(GL_TEXTURE0);
@@ -409,12 +403,12 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //activate shaders
-        glUseProgram(elementsShaderProgram);
+        glUseProgram(elementsShader);
 
         // camera/view transformation
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(elementsShaderProgram, "projection");
+        projectionLoc = glGetUniformLocation(elementsShader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
         glm_mat4_identity(matrix_view);
@@ -422,7 +416,7 @@ int main(){
             cameraTemp[i] = cameraPos[i] + cameraFront[i];
         }
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(elementsShaderProgram, "view");
+        viewLoc = glGetUniformLocation(elementsShader, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         //render
@@ -438,7 +432,7 @@ int main(){
             0, 0,           0, 1,
         };
         glm_mat4_mul(matrix_model,matrix_tmp,matrix_model);
-        modelLoc = glGetUniformLocation(elementsShaderProgram, "model");
+        modelLoc = glGetUniformLocation(elementsShader, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -449,7 +443,7 @@ int main(){
             glm_mat4_identity(matrix_model);
             glm_translate(matrix_model, ((Cube*)no->data)->position);
             glm_scale(matrix_model, ((Cube*)no->data)->size);
-            modelLoc = glGetUniformLocation(elementsShaderProgram, "model");
+            modelLoc = glGetUniformLocation(elementsShader, "model");
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             no = no->next;
@@ -464,10 +458,10 @@ int main(){
     //dealocate memory
     glDeleteVertexArrays(1, &VAOText);
     glDeleteBuffers(1, &VBOText);
-    glDeleteProgram(textShaderProgram);
+    glDeleteProgram(textShader);
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(elementsShaderProgram);
+    glDeleteProgram(elementsShader);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
@@ -587,16 +581,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
 }
 
 float toRad(float deg){
-    return deg * (PI/180);
-}
-
-Character* makeCharacter(unsigned int texture,FT_Face face){ 
-    Character *character = (Character*)malloc(sizeof(Character));
-    character->TextureID = texture;
-    glm_vec2_copy((vec2){face->glyph->bitmap.width, face->glyph->bitmap.rows}, character->Size);
-    glm_vec2_copy((vec2){face->glyph->bitmap_left, face->glyph->bitmap_top}, character->Bearing);
-    character->Advance = face->glyph->advance.x;
-    return character;
+    return deg * (M_PI/180);
 }
 
 Cube* makeCube(vec3 position, vec3 size){ 
@@ -604,6 +589,20 @@ Cube* makeCube(vec3 position, vec3 size){
     glm_vec3_copy(position ,cube->position);
     glm_vec3_copy(size ,cube->size);
     return cube;
+}
+
+int addCube(LinkedList *linkedList, vec3 position, vec3 size){
+    if(linkedList->head == NULL){
+        linkedList->head = makeNo(makeCube(position, size));
+        if(linkedList->head == NULL) return 1;
+        linkedList->tail = linkedList->head;
+        return 0;
+    }
+    No *no = makeNo(makeCube(position, size));
+    if(no == NULL) return 1;
+    linkedList->tail->next = no;
+    linkedList->tail = no;
+    return 0;
 }
 
 No* makeNo(void* pointer2Struct){ 
@@ -620,6 +619,15 @@ LinkedList* makeLinkedList(){
     return linkedList;
 }
 
+Character* makeCharacter(unsigned int texture,FT_Face face){ 
+    Character *character = (Character*)malloc(sizeof(Character));
+    character->TextureID = texture;
+    glm_vec2_copy((vec2){face->glyph->bitmap.width, face->glyph->bitmap.rows}, character->Size);
+    glm_vec2_copy((vec2){face->glyph->bitmap_left, face->glyph->bitmap_top}, character->Bearing);
+    character->Advance = face->glyph->advance.x;
+    return character;
+}
+
 int addCharacter(LinkedList *linkedList, unsigned int texture, FT_Face face){
     if(linkedList->head == NULL){
         linkedList->head = makeNo(makeCharacter(texture, face));
@@ -634,22 +642,10 @@ int addCharacter(LinkedList *linkedList, unsigned int texture, FT_Face face){
     return 0;
 }
 
-int addCube(LinkedList *linkedList, vec3 position, vec3 size){
-    if(linkedList->head == NULL){
-        linkedList->head = makeNo(makeCube(position, size));
-        if(linkedList->head == NULL) return 1;
-        linkedList->tail = linkedList->head;
-        return 0;
-    }
-    No *no = makeNo(makeCube(position, size));
-    if(no == NULL) return 1;
-    linkedList->tail->next = no;
-    linkedList->tail = no;
-    return 0;
-}
 void RenderText(LinkedList *linkedList, GLuint shader, char text[], float x, float y, float scale, vec3 color){
     perror("err");
     // activate corresponding render state	
+    glUseProgram(shader);
     glUniform3f(glGetUniformLocation(shader, "textColor"), color[0], color[1], color[2]);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(VAOText);
