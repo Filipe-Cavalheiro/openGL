@@ -26,10 +26,9 @@ int set_interface_attribs (int fd){
 
     settings.c_oflag = 0;           // no remapping, no delays
 
-
-    if (tcsetattr (fd, TCSANOW, &settings)){
+    if (tcsetattr(fd, TCSANOW, &settings)){
         fprintf(stderr, "error %d from tcsetattr", errno);
         return -1;
     }
-    return 0;
+    return 1;
 }
