@@ -78,6 +78,7 @@ float deltaTime = 0;
 float lastFrame = 0;
 uint8_t portConnection = 0;
 uint8_t write_to_port = 0;
+uint8_t pressingKey = 0;
 unsigned int VAOText, VBOText;
 
 int main(){ 
@@ -404,9 +405,6 @@ int main(){
         uint8_t output_data_tmp[2];
         nData = read(fd, &output_data_tmp, 2);
         output_data = ((uint16_t)output_data_tmp[0] << 8) | output_data_tmp[1];
-        /*for(int i = 0; nData > 0;++i, --nData){ 
-            printf("read %d containing: %d\n",nData, output_data[i]);
-        }*/
         if(nData > 0){
             printf("read %d containing: %d\n",nData, output_data);
         }
@@ -414,10 +412,9 @@ int main(){
         //output
         //------
         if(write_to_port){
-            printf("writing to port\n");
+            printf("data to port: %d\n", write_to_port);
+            write(fd, &write_to_port, sizeof(write_to_port));
             write_to_port = 0;
-            uint8_t to_write = 1;
-            write(fd, &to_write, sizeof(to_write));
         }
 
 		// render
@@ -542,22 +539,51 @@ void processInput(GLFWwindow *window){
 			usleep(60000); //debouncing 60ms
 		}
 	}
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+    if(pressingKey && glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE){
+        write_to_port = 10;
+        pressingKey = 0;
+    }
+	if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
 		carPos[2] -= cos(carAngle) * frameCameraSpeed;
 		carPos[0] -= sin(carAngle) * frameCameraSpeed;
+        if(!pressingKey){
+            write_to_port = 11;
+            pressingKey = 1;
+        }
 	}
 	else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
 		carPos[2] += cos(carAngle) * frameCameraSpeed;
 		carPos[0] += sin(carAngle) * frameCameraSpeed;
+        if(!pressingKey){
+            pressingKey = 1;
+            write_to_port = 12;
+        }
 	}
 	else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
 		carAngle += frameCameraSpeed;
+        if(!pressingKey){
+            pressingKey = 1;
+            write_to_port = 13;
+        }
 	}
 	else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
 		carAngle -= frameCameraSpeed;
+        if(!pressingKey){
+            pressingKey = 1;
+            write_to_port = 14;
+        }
 	}
 	if(glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
-        write_to_port = 1;
+        write_to_port = 20;
+    }
+	if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS){
+        write_to_port = 30;
+    }
+	if(glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS){
+        write_to_port = 31;
+    }
+	if(glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
+        write_to_port = 32;
     }
 }
 
