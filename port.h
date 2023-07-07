@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
+#include "port.c"
 
 int set_interface_attribs(int fd);
 

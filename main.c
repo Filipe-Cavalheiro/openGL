@@ -4,9 +4,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
-#include "port.c"
+#include "port.h"
+#include "cube.h"
+/*
 #include <ft2build.h>
 #include FT_FREETYPE_H
+*/
 
 #define SCR_WIDTH 800
 #define SCR_HEIGHT 600
@@ -18,21 +21,6 @@
 #define BOXHEIGHT 0.5
 #define RX_BUFFER_SIZE 64
 #define ARROWKEYS '-'
-
-typedef struct{
-    vec3 position;
-    vec3 size;
-}Cube;
-
-typedef struct{
-    void* data;
-    void* next;
-}No;
-
-typedef struct{
-    No *head;
-    No *tail;
-}LinkedList;
 
 /*
    typedef struct{
@@ -47,10 +35,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
-No* makeNo(void* pointer2Struct);
-LinkedList* makeLinkedList();
-Cube* makeCube(vec3 position, vec3 size); 
-int addCube(LinkedList *linkedList, vec3 position, vec3 size);
 //Character* makeCharacter(unsigned int texture,FT_Face face);
 //int addCharacter(LinkedList *linkedList, unsigned int texture, FT_Face face);
 //void RenderText(LinkedList *linkedList, GLuint shader, char text[], float x, float y, float scale, vec3 color);
@@ -67,9 +51,11 @@ vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
 vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
 
 //set up car
+//------------{X,Z,Y}
 vec3 carPos = {0,0,0};
 vec3 carSize = {1,1,1};
 float carAngle = 0;
+
 
 uint8_t firstMouse = 1;
 float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
@@ -80,11 +66,11 @@ float lastY =  300.0f;
 float deltaTime = 0;
 float lastFrame = 0;
 uint8_t portConnection = 0;
-uint8_t write_to_port[1] = {0};
+uint8_t write_to_port = {0};
 uint8_t currently_pressed_keys[30] = {0};
 unsigned int VAOText, VBOText;
 
-int main(){ 
+int main(){
     int fd = open (PORTNAME, O_RDWR | O_NOCTTY | O_NONBLOCK |O_ASYNC);
     if (fd < 0){
         fprintf(stderr, "error %d opening %s: %s\n", errno, PORTNAME, strerror (errno));
@@ -97,11 +83,7 @@ int main(){
 
         //soft restart the atmega328p
         char kickstart = '1';
-        write(fd, &kickstart, sizeof(kickstart));
-
-        memset(buf, '\0', sizeof(buf)); 
-        bytes_read = read(fd, buf, sizeof buf);
-        printf("N bytes: %d Output: %s", bytes_read, buf);
+        write(fd, &kickstart, 1);
     }
 
     LinkedList *cubesLinkedList = makeLinkedList();
@@ -109,9 +91,6 @@ int main(){
         fprintf(stderr, "Failed to create cubesLinkedList\n");
         return -1;
     }
-    addCube(cubesLinkedList, (vec3){1,1.5,1}, (vec3){1,2,1}); 
-    addCube(cubesLinkedList, (vec3){1,-2,0}, (vec3){1,1,0.5});
-
 
     // glfw: initialize and configure
     // ------------------------------
@@ -209,6 +188,7 @@ int main(){
     FT_Done_FreeType(ft);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // disable byte-alignment restriction
     */
+
     // configure VAO/VBO for texture quads (text)
     // -----------------------------------
     mat4 projection;
@@ -223,25 +203,26 @@ int main(){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    /*
     // build and compile shader program (text)
     // ------------------------------------
     GLuint text_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_vertex, GL_VERTEX_SHADER, "text.vs");
+    compile_shader(&text_vertex, GL_VERTEX_SHADER, "shaders/text.vs");
 
     GLuint text_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&text_frag, GL_FRAGMENT_SHADER, "text.fs");
+    compile_shader(&text_frag, GL_FRAGMENT_SHADER, "shaders/text.fs");
 
     GLuint textShader = glCreateProgram();
     link_shader(text_vertex, text_frag, textShader); 
+    */
 
-    //render text for testing purporses
     // build and compile shader program (elements)
     // ------------------------------------
     GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "elements.vs");
+    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "shaders/elements.vs");
 
     GLuint triangle_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "elements.fs");
+    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "shaders/elements.fs");
 
     GLuint elementsShader = glCreateProgram();
     link_shader(triangle_vertex, triangle_frag, elementsShader);
@@ -385,7 +366,7 @@ int main(){
     int nbFrames = 0;
     int n_rx;
     uint8_t rx_data[255];
-    uint16_t distance;
+    float distance;
 
     while (!glfwWindowShouldClose(window)){
         // per-frame time logic
@@ -409,19 +390,22 @@ int main(){
 
         memset(rx_data, 0, 255);
         n_rx = read(fd, rx_data, 2);
-        if(n_rx > 0){
-            printf("rx_data_split[0]: %d\n", rx_data[0]);
-            printf("rx_data_split[1]: %d\n", rx_data[1]);
+        if(n_rx > 1){
             distance = rx_data[1] << 8 | rx_data[0];
-            printf("read %d containing: %d\n",n_rx, distance);
+            printf("read %d containing: %f\n",n_rx, distance);
+            distance = distance / 100;
+            vec3 detected_position = {carPos[0] - distance * sin(carAngle), 0, carPos[3] - distance * cos(carAngle)} ;
+            printf("car position X:%f Z:%f Y:%f\n", carPos[0], carPos[1], carPos[2]);
+            printf("Created a cube located at X:%f Z:%f Y:%f\n", detected_position[0], detected_position[1], detected_position[2]);
+            addCube(cubesLinkedList, detected_position, (vec3){0.1, 0.1, 0.1}); 
         }
 
         //output
         //------
-        if(write_to_port[0]){
-            printf("data to port: %d\n", write_to_port[0]);
-            write(fd, write_to_port, 1);
-            write_to_port[0] = 0;
+        if(write_to_port){
+            printf("data to port: %d\n", write_to_port);
+            write(fd, &write_to_port, 1);
+            write_to_port = 0;
         }
 
         // render
@@ -485,7 +469,7 @@ int main(){
     //dealocate memory
     glDeleteVertexArrays(1, &VAOText);
     glDeleteBuffers(1, &VBOText);
-    glDeleteProgram(textShader);
+    //glDeleteProgram(textShader);
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(elementsShader);
@@ -545,14 +529,14 @@ void processInput(GLFWwindow *window){
         }
     }
     if(get_currently_pressed_key(ARROWKEYS) && glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE){
-        write_to_port[0] = 10;
+        write_to_port = 10;
         clear_currently_pressed_key(ARROWKEYS);
     }
     if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
         carPos[2] -= cos(carAngle) * frameCameraSpeed;
         carPos[0] -= sin(carAngle) * frameCameraSpeed;
         if(!get_currently_pressed_key(ARROWKEYS)){
-            write_to_port[0] = 11;
+            write_to_port = 11;
             set_currently_pressed_key(ARROWKEYS);
         }
     }
@@ -560,21 +544,21 @@ void processInput(GLFWwindow *window){
         carPos[2] += cos(carAngle) * frameCameraSpeed;
         carPos[0] += sin(carAngle) * frameCameraSpeed;
         if(!get_currently_pressed_key(ARROWKEYS)){
-            write_to_port[0] = 12;
+            write_to_port = 12;
             set_currently_pressed_key(ARROWKEYS);
         }
     }
     else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
         carAngle += frameCameraSpeed;
         if(!get_currently_pressed_key(ARROWKEYS)){
-            write_to_port[0] = 13;
+            write_to_port = 13;
             set_currently_pressed_key(ARROWKEYS);
         }
     }
     else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
         carAngle -= frameCameraSpeed;
         if(!get_currently_pressed_key(ARROWKEYS)){
-            write_to_port[0] = 14;
+            write_to_port = 14;
             set_currently_pressed_key(ARROWKEYS);
         }
     }
@@ -583,7 +567,7 @@ void processInput(GLFWwindow *window){
     }
     if(glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS){
         if(!get_currently_pressed_key('u')){
-            write_to_port[0] = 15;
+            write_to_port = 15;
             set_currently_pressed_key('u');
         }
     }
@@ -592,7 +576,7 @@ void processInput(GLFWwindow *window){
     }
     if(glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS){
         if(!get_currently_pressed_key('i')){
-            write_to_port[0] = 16;
+            write_to_port = 16;
             set_currently_pressed_key('i');
         }
     }
@@ -602,7 +586,7 @@ void processInput(GLFWwindow *window){
     if(glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
         if(!get_currently_pressed_key('j')){
             set_currently_pressed_key('j');
-            write_to_port[0] = 20;
+            write_to_port = 20;
         }
     }
     if(get_currently_pressed_key('h') && glfwGetKey(window, GLFW_KEY_H) == GLFW_RELEASE){
@@ -611,7 +595,7 @@ void processInput(GLFWwindow *window){
     if(glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
         if(!get_currently_pressed_key('h')){
             set_currently_pressed_key('h');
-            write_to_port[0] = 30;
+            write_to_port = 30;
         }
     }
     if(get_currently_pressed_key('g') && glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE){
@@ -620,7 +604,7 @@ void processInput(GLFWwindow *window){
     if(glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS){
         if(!get_currently_pressed_key('g')){
             set_currently_pressed_key('g');
-            write_to_port[0] = 31;
+            write_to_port = 31;
         }
     }
     if(get_currently_pressed_key('f') && glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE){
@@ -628,7 +612,7 @@ void processInput(GLFWwindow *window){
     }
     if(glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS){
         if(!get_currently_pressed_key('f')){
-            write_to_port[0] = 32;
+            write_to_port = 32;
             set_currently_pressed_key('f');
         }
     }
@@ -681,41 +665,6 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
 
 float toRad(float deg){
     return deg * (M_PI/180);
-}
-
-Cube* makeCube(vec3 position, vec3 size){ 
-    Cube *cube = (Cube*)malloc(sizeof(Cube));
-    glm_vec3_copy(position ,cube->position);
-    glm_vec3_copy(size ,cube->size);
-    return cube;
-}
-
-int addCube(LinkedList *linkedList, vec3 position, vec3 size){
-    if(linkedList->head == NULL){
-        linkedList->head = makeNo(makeCube(position, size));
-        if(linkedList->head == NULL) return 1;
-        linkedList->tail = linkedList->head;
-        return 0;
-    }
-    No *no = makeNo(makeCube(position, size));
-    if(no == NULL) return 1;
-    linkedList->tail->next = no;
-    linkedList->tail = no;
-    return 0;
-}
-
-No* makeNo(void* pointer2Struct){ 
-    No *no = (No*)malloc(sizeof(No)); 
-    no->data = pointer2Struct;
-    no->next = NULL;
-    return no;
-}
-
-LinkedList* makeLinkedList(){ 
-    LinkedList *linkedList = (LinkedList*)malloc(sizeof(LinkedList));
-    linkedList->head = NULL;
-    linkedList->tail = NULL;
-    return linkedList;
 }
 
 /*Character* makeCharacter(unsigned int texture,FT_Face face){ 
