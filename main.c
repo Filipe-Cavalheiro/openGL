@@ -302,7 +302,6 @@ int main(){
     unsigned int texture0;
     glGenTextures(1, &texture0);
     glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
-    glBindTexture(GL_TEXTURE_2D, texture0);
     glBindTexture(GL_TEXTURE_2D, texture0); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
                                             // set the texture wrapping parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
@@ -322,7 +321,6 @@ int main(){
     unsigned int texture1;
     glGenTextures(1, &texture1);
     glActiveTexture(GL_TEXTURE1); // activate the texture unit first before binding texture
-    glBindTexture(GL_TEXTURE_2D, texture1);
     glBindTexture(GL_TEXTURE_2D, texture1); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
                                             // set the texture wrapping parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)

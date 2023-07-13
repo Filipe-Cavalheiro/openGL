@@ -5,10 +5,13 @@ char* get_shader_content(const char* fileName){
     FILE *fp;
     uint32_t size = 0;
     char* shaderContent;
-    
+
     /* Read File to get size */
     fp = fopen(fileName, "rb");
-    if(fp == NULL){return "";}
+     if (fp == NULL) {
+        printf("Failed to open shader file: %s\n", fileName);
+        return NULL;
+    }
     fseek(fp, 0L, SEEK_END);
     size = ftell(fp)+1;
     fclose(fp);
@@ -36,10 +39,20 @@ void compile_shader(GLuint* shaderId, GLenum shaderType, const char* shaderFileP
     glCompileShader(*shaderId);
     glGetShaderiv(*shaderId, GL_COMPILE_STATUS, &isCompiled);
 
-    if(isCompiled == GL_FALSE) { /* Here You should provide more error details to the User*/
+    if(isCompiled == GL_FALSE) {
+        GLint maxLength = 255;
+        char errorLog[maxLength];
+        glGetShaderiv(*shaderId, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        glGetShaderInfoLog(*shaderId, maxLength, &maxLength, errorLog);
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
         printf("Shader Compiler Error: %s\n", shaderFilePath);
-        glDeleteShader(*shaderId);
-        return;
+        printf("Error: %s\n", errorLog);
+        glDeleteShader(*shaderId); // Don't leak the shader.
+        return;    
     }
 }
 
@@ -56,8 +69,8 @@ void link_shader(GLuint vertexShaderID, GLuint fragmentShaderID, GLuint programI
         GLint maxLength = 0;
         char* infoLog = malloc(1024);
         printf("Shader Program Linker Error\n");
-        
-	    glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &maxLength);
+
+        glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &maxLength);
         glGetProgramInfoLog(programID, maxLength, &maxLength, &infoLog[0]);
 
         printf("%s\n", infoLog);
