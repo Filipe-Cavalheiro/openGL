@@ -45,7 +45,7 @@ int main(){
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Template of opengl", NULL, NULL);
     if (window == NULL){
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -68,7 +68,7 @@ int main(){
     GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "shaders/template.vs");
 
-    GLuint triangle_frag = glCreateShader(GL_VERTEX_SHADER);
+    GLuint triangle_frag = glCreateShader(GL_FRAGMENT_SHADER);
     compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "shaders/template.fs");
 
     GLuint elementsShader = glCreateProgram();

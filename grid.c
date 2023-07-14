@@ -17,7 +17,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //set up camera
-vec3 cameraPos    = {0.0f, 0.0f,  3.0f};
+vec3 cameraPos    = {0.0f, 1.0f,  0.0f};
 vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
 vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
 
@@ -45,7 +45,7 @@ int main(){
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "grid", NULL, NULL);
     if (window == NULL){
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -65,23 +65,23 @@ int main(){
 
     // build and compile shader program (elements)
     // ------------------------------------
-    GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "shaders/template.vs");
+    GLuint gridVS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&gridVS, GL_VERTEX_SHADER, "shaders/grid.vs");
 
-    GLuint triangle_frag = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "shaders/template.fs");
+    GLuint gridFS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&gridFS, GL_FRAGMENT_SHADER, "shaders/grid.fs");
 
-    GLuint elementsShader = glCreateProgram();
-    link_shader(triangle_vertex, triangle_frag, elementsShader);
+    GLuint gridShader = glCreateProgram();
+    link_shader(gridVS, gridFS, gridShader);
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
         // positions          
-         0.5f,  0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,   
-        -0.5f, -0.5f, 0.0f,   
-        -0.5f,  0.5f, 0.0f, 
+         1.0f,  1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,   
+        -1.0f, -1.0f, 0.0f,   
+        -1.0f,  1.0f, 0.0f, 
     };
     unsigned int indices[] = {
         0, 1, 3, // first triangle
@@ -103,7 +103,13 @@ int main(){
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
- 
+
+
+
+    //enable varied opacity
+    glEnable (GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
     //Coordinate-System variabels 
     mat4 matrix_model;
     mat4 matrix_view;
@@ -132,27 +138,28 @@ int main(){
 
         // render
         // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
  
         //activate shaders
-        glUseProgram(elementsShader);
+        glUseProgram(gridShader);
 
         //create transformations
+        /*
         glm_mat4_identity(matrix_model);
-        modelLoc = glGetUniformLocation(elementsShader, "model");
+        modelLoc = glGetUniformLocation(gridShader, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-
+        */
         // calculate the model matrix for each object and pass it to shader before drawing
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(elementsShader, "view");
+        viewLoc = glGetUniformLocation(gridShader, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(elementsShader, "projection");
+        projectionLoc = glGetUniformLocation(gridShader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
         glBindVertexArray(VAO);
