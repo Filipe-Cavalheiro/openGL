@@ -63,7 +63,8 @@ int main(){
         return -1;
     }
 
-    // build and compile shader program (elements)
+
+    // build and compile shader program (grid)
     // ------------------------------------
     GLuint gridVS = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&gridVS, GL_VERTEX_SHADER, "shaders/grid.vs");
@@ -76,10 +77,10 @@ int main(){
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    float vertices[] = {
+    float grid_vertices[] = {
         // positions          
-         1.0f,  1.0f, 0.0f,
-         1.0f, -1.0f, 0.0f,   
+        1.0f,  1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,   
         -1.0f, -1.0f, 0.0f,   
         -1.0f,  1.0f, 0.0f, 
     };
@@ -95,7 +96,7 @@ int main(){
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(grid_vertices), grid_vertices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
@@ -104,11 +105,78 @@ int main(){
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
 
+    // build and compile shader program (cube)
+    // ------------------------------------
+    GLuint cubeVS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&cubeVS, GL_VERTEX_SHADER, "shaders/cube.vs");
 
-    //enable varied opacity
-    glEnable (GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    GLuint cubeFS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&cubeFS, GL_FRAGMENT_SHADER, "shaders/cube.fs");
+
+    GLuint cubeShader = glCreateProgram();
+    link_shader(cubeVS, cubeFS, cubeShader);
+
+    float cube_vertices[] = {
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+
+        -0.5f, -0.5f,  0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+
+        -0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+
+        -0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+    };
+    unsigned int cube_VBO, cube_VAO;
+    glGenVertexArrays(1, &cube_VAO);
+    glGenBuffers(1, &cube_VBO);
+
+    glBindVertexArray(cube_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, cube_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
 
     //Coordinate-System variabels 
     mat4 matrix_model;
@@ -122,7 +190,7 @@ int main(){
     //time variables
     float currentFrame;
     float lastFrame = 0;
-    
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -131,26 +199,24 @@ int main(){
         currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        
+
         // input
         // -----
         processInput(window);
 
         // render
         // ------
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
- 
-        //activate shaders
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+        //enable varied opacity
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+        //create transformations(grid)
         glUseProgram(gridShader);
 
-        //create transformations
-        /*
-        glm_mat4_identity(matrix_model);
-        modelLoc = glGetUniformLocation(gridShader, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-        */
-        // calculate the model matrix for each object and pass it to shader before drawing
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
@@ -164,6 +230,30 @@ int main(){
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDisable(GL_BLEND);
+
+        //create transformations(cube)
+        glUseProgram(cubeShader);
+
+        glm_mat4_identity(matrix_model);
+        glm_translate(matrix_model, (vec3){0.0f, 0.5f, 0.0f});
+        modelLoc = glGetUniformLocation(cubeShader, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+        // calculate the model matrix for each object and pass it to shader before drawing
+        glm_mat4_identity(matrix_view);
+        for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
+        glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
+        viewLoc = glGetUniformLocation(cubeShader, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
+
+        glm_mat4_identity(matrix_projection);
+        glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
+        projectionLoc = glGetUniformLocation(cubeShader, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
+
+        glBindVertexArray(cube_VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -176,6 +266,8 @@ int main(){
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+    glDeleteVertexArrays(1, &cube_VAO);
+    glDeleteBuffers(1, &cube_VBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
