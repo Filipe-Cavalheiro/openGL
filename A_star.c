@@ -9,7 +9,6 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 float toRad(float deg);
 
 // settings
@@ -17,19 +16,12 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //set up camera
-vec3 cameraPos    = {0.0f, 1.0f,  0.0f};
-vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
-vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
+vec3 cameraPos    = {0.0f, 5.0f,  0.0f};
+vec3 cameraFront  = {0.0f, -1.0f,  0.0f};
+vec3 cameraUp     = {1.0f, 0.0f,  0.0f};
 
 //time variables
 float deltaTime = 0;
-
-//mouse variables
-uint8_t firstMouse = 1;
-float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
-float pitch =  0.0f;
-float lastX =  400.0f;
-float lastY =  300.0f;
 
 int main(){
     // glfw: initialize and configure
@@ -53,8 +45,6 @@ int main(){
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -62,7 +52,6 @@ int main(){
         fprintf(stderr, "Failed to initialize GLAD\n");
         return -1;
     }
-
 
     // build and compile shader program (grid)
     // ------------------------------------
@@ -88,17 +77,17 @@ int main(){
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
     };
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    unsigned int GRID_VBO, GRID_VAO, GRID_EBO;
+    glGenVertexArrays(1, &GRID_VAO);
+    glGenBuffers(1, &GRID_VBO);
+    glGenBuffers(1, &GRID_EBO);
 
-    glBindVertexArray(VAO);
+    glBindVertexArray(GRID_VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, GRID_VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(grid_vertices), grid_vertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GRID_EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // position attribute
@@ -108,77 +97,61 @@ int main(){
     //Clean Up, free all Vertex Array Objects
     glBindVertexArray(0);
 
-    // build and compile shader program (cube)
+    // build and compile shader program (square)
     // ------------------------------------
-    GLuint cubeVS = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&cubeVS, GL_VERTEX_SHADER, "shaders/cube.vs");
+    GLuint A_starVS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&A_starVS, GL_VERTEX_SHADER, "shaders/A_star.vs");
 
-    GLuint cubeFS = glCreateShader(GL_FRAGMENT_SHADER);
-    compile_shader(&cubeFS, GL_FRAGMENT_SHADER, "shaders/cube.fs");
+    GLuint A_starFS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&A_starFS, GL_FRAGMENT_SHADER, "shaders/A_star.fs");
 
-    GLuint cubeShader = glCreateProgram();
-    link_shader(cubeVS, cubeFS, cubeShader);
+    GLuint A_starShader = glCreateProgram();
+    link_shader(A_starVS, A_starFS, A_starShader);
 
-    float cube_vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-
-        -0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-
-        -0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-
-        -0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    float square_vertices[] = {
+        0.1f,  0.0f, 0.1f,  // top right
+        0.1f, 0.0f, -0.1f,  // bottom right
+        -0.1f, 0.0f, -0.1f,  // bottom left
+        -0.1f,  0.0f, 0.1f   // top left 
     };
-    unsigned int cube_VBO, cube_VAO;
-    glGenVertexArrays(1, &cube_VAO);
-    glGenBuffers(1, &cube_VBO);
+    unsigned int square_indices[] = {
+        0, 1, 3, // first triangle
+        1, 2, 3  // second triangle
+    };
+    int square_state[] = {
+        1,1,1,1,1,
+        1,0,0,0,1,
+        1,0,0,1,1,
+        1,0,0,0,1,
+        1,1,1,1,1
+    };
+    unsigned int SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
+    glGenVertexArrays(1, &SQUARE_VAO);
+    glGenBuffers(1, &SQUARE_VBO);
+    glGenBuffers(1, &SQUARE_EBO);
 
-    glBindVertexArray(cube_VAO);
+    glBindVertexArray(SQUARE_VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, cube_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, SQUARE_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUARE_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW);
 
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    // position attribute
+    glVertexAttribPointer(1, 1, GL_INT, GL_FALSE, sizeof(int), (void*)0);
+    glEnableVertexAttribArray(1);
+
     //Clean Up, free all Vertex Array Objects
     glBindVertexArray(0);
 
-    //Coordinate-System variabels 
+    //coordinate-System variabels 
     mat4 matrix_model;
     mat4 matrix_view;
     mat4 matrix_projection;
@@ -209,13 +182,12 @@ int main(){
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        //create transformations(grid)
+        glUseProgram(gridShader);
 
         //enable varied opacity
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
-        //create transformations(grid)
-        glUseProgram(gridShader);
 
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
@@ -228,32 +200,43 @@ int main(){
         projectionLoc = glGetUniformLocation(gridShader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
-        glBindVertexArray(VAO);
+        glBindVertexArray(GRID_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
 
-        //create transformations(cube)
-        glUseProgram(cubeShader);
+        //create transformations(square)
+        glUseProgram(A_starShader);
 
-        glm_mat4_identity(matrix_model);
-        glm_translate(matrix_model, (vec3){0.0f, 0.5f, 0.0f});
-        modelLoc = glGetUniformLocation(cubeShader, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-
-        // calculate the model matrix for each object and pass it to shader before drawing
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(cubeShader, "view");
+        viewLoc = glGetUniformLocation(A_starShader, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(cubeShader, "projection");
+        projectionLoc = glGetUniformLocation(A_starShader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
-        glBindVertexArray(cube_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(SQUARE_VAO);
+        int count = 0;
+        unsigned int stateLoc;
+        for(float i = -1; i < 1.5;){
+                for(float j = -1; j < 1.5;){
+                    glm_mat4_identity(matrix_model);
+                    glm_translate(matrix_model, (vec3){i, 0, j});
+                    modelLoc = glGetUniformLocation(A_starShader, "model");
+                    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+                    
+                    stateLoc = glGetUniformLocation(A_starShader, "state");
+                    glUniform1i(stateLoc, square_state[count]);
+                    
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    j += 0.5;
+                    ++count;
+                }
+                i += 0.5;
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -263,11 +246,9 @@ int main(){
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteVertexArrays(1, &cube_VAO);
-    glDeleteBuffers(1, &cube_VBO);
+    glDeleteVertexArrays(1, &GRID_VAO);
+    glDeleteBuffers(1, &GRID_VBO);
+    glDeleteBuffers(1, &GRID_EBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -284,11 +265,11 @@ void processInput(GLFWwindow *window){
     float frameCameraSpeed = deltaTime * CAMERASPEED;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
         for(int i = 0; i < 3; ++i)
-            cameraPos[i] += cameraFront[i] * frameCameraSpeed;
+            cameraPos[i] += cameraUp[i] * frameCameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
         for(int i = 0; i < 3; ++i)
-            cameraPos[i] -= cameraFront[i] * frameCameraSpeed;
+            cameraPos[i] -= cameraUp[i] * frameCameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
         for(int i = 0; i < 3; ++i)
@@ -306,65 +287,16 @@ void processInput(GLFWwindow *window){
         for(int i = 0; i < 3; ++i)
             cameraPos[i] += cameraTemp[i] * frameCameraSpeed;
     } 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
-        for(int i = 0; i < 3; ++i)
-            cameraPos[i] += cameraUp[i] * frameCameraSpeed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
-        for(int i = 0; i < 3; ++i)
-            cameraPos[i] -= cameraUp[i] * frameCameraSpeed;
-    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
+void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
 
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
-    float xpos = (float)xposIn;
-    float ypos = (float)yposIn;
-
-    if (firstMouse){
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = 0;
-        return;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;
-
-    xoffset *= SENSITIVITY;
-    yoffset *= SENSITIVITY;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    vec3 front;
-    front[0] = cos(toRad(yaw)) * cos(toRad(pitch));
-    front[1] = sin(toRad(pitch));
-    front[2] = sin(toRad(yaw)) * cos(toRad(pitch));
-    glm_normalize(front);
-    for(int i = 0; i < 3; ++i)
-        cameraFront[i] = front[i];
-    return;
-}
-
-float toRad(float deg){
+float torad(float deg){
     return deg * (M_PI/180);
 }

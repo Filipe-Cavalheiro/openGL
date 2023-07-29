@@ -17,7 +17,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //set up camera
-vec3 cameraPos    = {0.0f, 0.0f,  3.0f};
+vec3 cameraPos    = {0.0f, 1.0f,  0.0f};
 vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
 vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
 
@@ -45,7 +45,7 @@ int main(){
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Template of opengl", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "grid", NULL, NULL);
     if (window == NULL){
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -63,47 +63,121 @@ int main(){
         return -1;
     }
 
-    // build and compile shader program (elements)
+
+    // build and compile shader program (grid)
     // ------------------------------------
-    GLuint triangle_vertex = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&triangle_vertex, GL_VERTEX_SHADER, "shaders/template.vs");
+    GLuint gridVS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&gridVS, GL_VERTEX_SHADER, "shaders/grid.vs");
 
-    GLuint triangle_frag = glCreateShader(GL_FRAGMENT_SHADER);
-    compile_shader(&triangle_frag, GL_FRAGMENT_SHADER, "shaders/template.fs");
+    GLuint gridFS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&gridFS, GL_FRAGMENT_SHADER, "shaders/grid.fs");
 
-    GLuint elementsShader = glCreateProgram();
-    link_shader(triangle_vertex, triangle_frag, elementsShader);
+    GLuint gridShader = glCreateProgram();
+    link_shader(gridVS, gridFS, gridShader);
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    float vertices[] = {
+    float grid_vertices[] = {
         // positions          
-         0.5f,  0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,   
-        -0.5f, -0.5f, 0.0f,   
-        -0.5f,  0.5f, 0.0f, 
+        1.0f,  1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,   
+        -1.0f, -1.0f, 0.0f,   
+        -1.0f,  1.0f, 0.0f, 
     };
     unsigned int indices[] = {
         0, 1, 3, // first triangle
         1, 2, 3  // second triangle
     };
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    unsigned int GRID_VBO, GRID_VAO, GRID_EBO;
+    glGenVertexArrays(1, &GRID_VAO);
+    glGenBuffers(1, &GRID_VBO);
+    glGenBuffers(1, &GRID_EBO);
 
-    glBindVertexArray(VAO);
+    glBindVertexArray(GRID_VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, GRID_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(grid_vertices), grid_vertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GRID_EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
- 
+
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
+
+    // build and compile shader program (cube)
+    // ------------------------------------
+    GLuint cubeVS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&cubeVS, GL_VERTEX_SHADER, "shaders/cube.vs");
+
+    GLuint cubeFS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&cubeFS, GL_FRAGMENT_SHADER, "shaders/cube.fs");
+
+    GLuint cubeShader = glCreateProgram();
+    link_shader(cubeVS, cubeFS, cubeShader);
+
+    float cube_vertices[] = {
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+
+        -0.5f, -0.5f,  0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+
+        -0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f, -0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        0.5f, -0.5f,  0.5f,  
+        -0.5f, -0.5f,  0.5f,  
+        -0.5f, -0.5f, -0.5f,  
+
+        -0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f, -0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f,  0.5f,  
+        -0.5f,  0.5f, -0.5f,  
+    };
+    unsigned int CUBE_VBO, CUBE_VAO;
+    glGenVertexArrays(1, &CUBE_VAO);
+    glGenBuffers(1, &CUBE_VBO);
+
+    glBindVertexArray(CUBE_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, CUBE_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
+
     //Coordinate-System variabels 
     mat4 matrix_model;
     mat4 matrix_view;
@@ -116,7 +190,7 @@ int main(){
     //time variables
     float currentFrame;
     float lastFrame = 0;
-    
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -125,38 +199,60 @@ int main(){
         currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        
+
         // input
         // -----
         processInput(window);
 
         // render
         // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
- 
-        //activate shaders
-        glUseProgram(elementsShader);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //create transformations
+        //enable varied opacity
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+        //create transformations(grid)
+        glUseProgram(gridShader);
+
+        glm_mat4_identity(matrix_view);
+        for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
+        glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
+        viewLoc = glGetUniformLocation(gridShader, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
+
+        glm_mat4_identity(matrix_projection);
+        glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
+        projectionLoc = glGetUniformLocation(gridShader, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
+
+        glBindVertexArray(GRID_VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDisable(GL_BLEND);
+
+        //create transformations(cube)
+        glUseProgram(cubeShader);
+
         glm_mat4_identity(matrix_model);
-        modelLoc = glGetUniformLocation(elementsShader, "model");
+        glm_translate(matrix_model, (vec3){0.0f, 0.5f, 0.0f});
+        modelLoc = glGetUniformLocation(cubeShader, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
 
         // calculate the model matrix for each object and pass it to shader before drawing
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(elementsShader, "view");
+        viewLoc = glGetUniformLocation(cubeShader, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(elementsShader, "projection");
+        projectionLoc = glGetUniformLocation(cubeShader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(CUBE_VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -166,9 +262,11 @@ int main(){
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    glDeleteVertexArrays(1, &GRID_VAO);
+    glDeleteBuffers(1, &GRID_VBO);
+    glDeleteBuffers(1, &GRID_EBO);
+    glDeleteVertexArrays(1, &CUBE_VAO);
+    glDeleteBuffers(1, &CUBE_VBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
