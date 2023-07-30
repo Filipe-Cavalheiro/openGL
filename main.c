@@ -5,7 +5,9 @@
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
 #include "port.h"
+#include "data_structures/linkedList.h"
 #include "cube.h"
+
 /*
 #include <ft2build.h>
 #include FT_FREETYPE_H

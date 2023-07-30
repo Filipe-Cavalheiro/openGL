@@ -1,33 +1,9 @@
 #include "cube.h"
 
 typedef struct{
-    void* data;
-    void* next;
-}No;
-
-typedef struct{
-    No *head;
-    No *tail;
-}LinkedList;
-
-typedef struct{
     vec3 position;
     vec3 size;
 }Cube;
-
-No* makeNo(void* pointer2Struct){ 
-    No *no = (No*)malloc(sizeof(No)); 
-    no->data = pointer2Struct;
-    no->next = NULL;
-    return no;
-}
-
-LinkedList* makeLinkedList(){ 
-    LinkedList *linkedList = (LinkedList*)malloc(sizeof(LinkedList));
-    linkedList->head = NULL;
-    linkedList->tail = NULL;
-    return linkedList;
-}
 
 Cube* makeCube(vec3 position, vec3 size){ 
     Cube *cube = (Cube*)malloc(sizeof(Cube));

@@ -2,6 +2,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
+#include "path_finding/breathFirst.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -16,9 +17,9 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //set up camera
-vec3 cameraPos    = {0.0f, 5.0f,  0.0f};
-vec3 cameraFront  = {0.0f, -1.0f,  0.0f};
-vec3 cameraUp     = {1.0f, 0.0f,  0.0f};
+vec3 cameraPos    = {0.0f, -5.0f,  0.0f};
+vec3 cameraFront  = {0.0f, 1.0f,  0.0f};
+vec3 cameraUp     = {-1.0f, 0.0f,  0.0f};
 
 //time variables
 float deltaTime = 0;
@@ -121,11 +122,12 @@ int main(){
         1, 2, 3  // second triangle
     };
     int square_state[] = {
-        1,1,1,1,1,
-        1,0,0,0,1,
-        1,0,0,1,1,
-        1,0,0,0,1,
-        1,1,1,1,1
+        1,1,1,1,1,1, 
+        1,0,0,0,0,1,
+        1,0,0,0,0,1,
+        1,0,0,0,0,1,
+        1,0,0,0,0,1,
+        1,1,1,1,1,1
     };
     unsigned int SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
     glGenVertexArrays(1, &SQUARE_VAO);
@@ -163,6 +165,11 @@ int main(){
     //time variables
     float currentFrame;
     float lastFrame = 0;
+
+    //breathFirst set up
+    int startingPos[2] = {1, 1}; 
+    int finishPos[2] = {4, 4};
+    breathFirstSearch(startingPos, finishPos);
 
     // render loop
     // -----------
@@ -221,8 +228,8 @@ int main(){
         glBindVertexArray(SQUARE_VAO);
         int count = 0;
         unsigned int stateLoc;
-        for(float i = -1; i < 1.5;){
-                for(float j = -1; j < 1.5;){
+        for(float i = -1.25; i < 1.75;){
+                for(float j = -1.25; j < 1.75;){
                     glm_mat4_identity(matrix_model);
                     glm_translate(matrix_model, (vec3){i, 0, j});
                     modelLoc = glGetUniformLocation(A_starShader, "model");

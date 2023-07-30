@@ -1,7 +1,7 @@
 f = main
 
 default:
-	gcc $f.c -I/usr/include/freetype2 -lm -lGL -lGLU -lglut -lglfw -lfreetype 'glad/glad.c' stb_image.h shader_lib.c
+	gcc $f.c  -Wall -I/usr/include/freetype2 -lm -lGL -lGLU -lglut -lglfw -lfreetype 'glad/glad.c' stb_image.h shader_lib.c
 	./a.out
 	make clean
 
