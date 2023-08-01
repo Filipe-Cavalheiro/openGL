@@ -33,6 +33,15 @@ pre-conditions: list != NULL
 void destroyListAndElems(linkedList list, void (*destroy)(void *));
 
 /***********************************************
+popList - return the data of the first node of the list 
+Parameters:
+	list - sequence to get head
+Return: elem of head
+pre-conditions: list != NULL
+***********************************************/
+void* popList(linkedList list);
+
+/***********************************************
 addHead - Adds the given element too the firts position of the sequence.
 Parameters:
 	list - sequence

@@ -334,7 +334,7 @@ int main(){
     float angle;
     float currentFrame;
     vec3 cameraTemp;
-    No *no;
+    node *no;
     double lastTime = glfwGetTime();
     int nbFrames = 0;
     int n_rx;

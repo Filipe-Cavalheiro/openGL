@@ -40,6 +40,19 @@ void destroyListAndElems(linkedList list, void (*destroy)(void *)){
     free(list);
 }
 
+void* popList(linkedList list){
+    if(list->head == NULL)
+        return NULL;
+    node aux = list->head;
+    int* elem = getElem(aux);
+    list->head = nextNode(aux);
+    destroyNode(aux);
+    --list->nElems;
+    if (list->head != NULL) 
+        setPrevNode(list->head, NULL);
+    return (void*) elem;
+}
+
 void addHead(linkedList list, void *elem){
     node head = makeNode(elem);
     if (!list->nElems){
@@ -60,8 +73,8 @@ void append(linkedList list, void *elem){
         list->head = tail;
     }
     else{
-    setPrevNode(tail, list->tail);
-    setNextNode(list->tail, tail);
+        setPrevNode(tail, list->tail);
+        setNextNode(list->tail, tail);
     }
     list->tail = tail;
     ++list->nElems;
@@ -70,13 +83,11 @@ void append(linkedList list, void *elem){
 node locateIndex(linkedList list, int index){
     int d = (list->nElems / 2 + 1) - index;
     node aux = (d > 0) ? list->head : list->tail;
-    if (d > 0)
-    {
+    if (d > 0){
         for (int i = 0; i < index; ++i)
             aux = nextNode(aux);
     }
-    else
-    {
+    else{
         for (int i = list->nElems; i > index; --i)
             aux = prevNode(aux);
     }

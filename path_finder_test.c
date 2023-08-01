@@ -168,9 +168,8 @@ int main(){
 
     //breathFirst set up
     int startingPos[2] = {1, 1}; 
-    int finishPos[2] = {4, 4};
-    breathFirstSearch(startingPos, finishPos);
-
+    int finishPos[2] = {3, 2};
+    breathFirstSearch(startingPos, finishPos, square_state);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
