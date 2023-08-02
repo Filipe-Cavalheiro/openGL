@@ -2,7 +2,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
-#include "path_finding/breathFirst.h"
+#include "path_finding/closest_breathFirst.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -101,10 +101,10 @@ int main(){
     // build and compile shader program (square)
     // ------------------------------------
     GLuint A_starVS = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&A_starVS, GL_VERTEX_SHADER, "shaders/A_star.vs");
+    compile_shader(&A_starVS, GL_VERTEX_SHADER, "shaders/path_finding.vs");
 
     GLuint A_starFS = glCreateShader(GL_FRAGMENT_SHADER);
-    compile_shader(&A_starFS, GL_FRAGMENT_SHADER, "shaders/A_star.fs");
+    compile_shader(&A_starFS, GL_FRAGMENT_SHADER, "shaders/path_finding.fs");
 
     GLuint A_starShader = glCreateProgram();
     link_shader(A_starVS, A_starFS, A_starShader);
@@ -122,12 +122,12 @@ int main(){
         1, 2, 3  // second triangle
     };
     int square_state[] = {
-        1,1,1,1,1,1, 
-        1,0,0,0,0,1,
-        1,0,0,0,0,1,
-        1,0,0,0,0,1,
-        1,0,0,0,0,1,
-        1,1,1,1,1,1
+        0,0,0,0,0,0, 
+        0,0,1,0,1,1,
+        0,0,0,0,0,0,
+        0,0,1,1,0,0,
+        0,0,1,0,0,0,
+        0,0,0,0,0,0
     };
     unsigned int SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
     glGenVertexArrays(1, &SQUARE_VAO);
@@ -167,9 +167,14 @@ int main(){
     float lastFrame = 0;
 
     //breathFirst set up
-    int startingPos[2] = {1, 1}; 
-    int finishPos[2] = {3, 2};
-    breathFirstSearch(startingPos, finishPos, square_state);
+    int startingPos[2] = {3, 4}; 
+    int finishPos[2] = {1, 2};
+    linkedList BFSpath = breathFirstSearch(startingPos, finishPos, square_state);
+    if(BFSpath == NULL){
+        printf("could not create BFS path\n");
+    }
+    square_state[startingPos[0] + startingPos[1] *6] = 2; 
+    square_state[finishPos[0] + finishPos[1] *6] = 3; 
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){

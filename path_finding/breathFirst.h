@@ -1,7 +1,6 @@
 #ifndef BREATHFIRST_H
 #define BREATHFIRST_H 
 
-typedef struct _traceBack *traceBack;
 #include "breathFirst.c"
 
 void breathFirstSearch();

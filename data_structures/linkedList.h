@@ -70,7 +70,7 @@ Parameters:
 Return:
 Pre-conditions: list != NULL && index>0 && index<= sizeCertified
 ***********************************************/
-void insert(linkedList list, void *elem, int index);
+void insert_ll(linkedList list, void *elem, int index);
 
 /***********************************************
 moveToTail - Moves the given element too the last position of the sequence.

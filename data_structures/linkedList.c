@@ -94,7 +94,7 @@ node locateIndex(linkedList list, int index){
     return aux;
 }
 
-void insert(linkedList list, void *elem, int index){
+void insert_ll(linkedList list, void *elem, int index){
     if (!index){
         addHead(list, elem);
         return;

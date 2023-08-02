@@ -13,5 +13,6 @@ void main(){
         FragColor = vec4(0.573f, 0.2f, 1.0f, 1.0f);
     else if(state == 4)  // checked
         FragColor = vec4(0.2f, 0.886f, 1.0f, 1.0f);
-
+    else if(state == 5)  //closest path
+        FragColor = vec4(0.98f, 0.322f, 0.106f, 1.0f);
 }
