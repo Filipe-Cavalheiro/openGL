@@ -11,6 +11,9 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
+unsigned int makeNsideShape(uint8_t sides);
+unsigned int makeSquare();
+
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -108,19 +111,8 @@ int main(){
 
     GLuint A_starShader = glCreateProgram();
     link_shader(A_starVS, A_starFS, A_starShader);
-
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-    float square_vertices[] = {
-        0.1f,  0.0f, 0.1f,  // top right
-        0.1f, 0.0f, -0.1f,  // bottom right
-        -0.1f, 0.0f, -0.1f,  // bottom left
-        -0.1f,  0.0f, 0.1f   // top left 
-    };
-    unsigned int square_indices[] = {
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
-    };
+    
+    unsigned int SQUARE_VAO = makeNsideShape(6); 
     int square_state[] = {
         0,0,0,0,0,0, 
         0,0,1,0,1,1,
@@ -129,30 +121,7 @@ int main(){
         0,0,1,0,0,0,
         0,0,0,0,0,0
     };
-    unsigned int SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
-    glGenVertexArrays(1, &SQUARE_VAO);
-    glGenBuffers(1, &SQUARE_VBO);
-    glGenBuffers(1, &SQUARE_EBO);
-
-    glBindVertexArray(SQUARE_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, SQUARE_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUARE_EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // position attribute
-    glVertexAttribPointer(1, 1, GL_INT, GL_FALSE, sizeof(int), (void*)0);
-    glEnableVertexAttribArray(1);
-
-    //Clean Up, free all Vertex Array Objects
-    glBindVertexArray(0);
-
+    
     //coordinate-System variabels 
     mat4 matrix_model;
     mat4 matrix_view;
@@ -212,7 +181,7 @@ int main(){
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
         glBindVertexArray(GRID_VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 8, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
 
         //create transformations(square)
@@ -242,7 +211,7 @@ int main(){
                     stateLoc = glGetUniformLocation(A_starShader, "state");
                     glUniform1i(stateLoc, square_state[count]);
                     
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    glDrawElements(GL_TRIANGLE_FAN, 8, GL_UNSIGNED_INT, 0);
                     j += 0.5;
                     ++count;
                 }
@@ -265,6 +234,93 @@ int main(){
     // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
+}
+
+unsigned int makeNsideShape(uint8_t sides){
+    if (sides == 4){
+        return makeSquare();
+    }
+    float* vertices = (float*)malloc(sizeof(float) * (sides+1) * 3);
+    vertices[0] = 0;
+    vertices[1] = 0;
+    vertices[2] = 0;
+    printf("vertices: %f, %f, %f\n", vertices[0] , vertices[1] , vertices[2]);
+    float angle = 0;
+    for(int i = 3; i <= sides*3;){
+        printf("angle:%f\n", angle);
+        vertices[i] = sin(angle) * 0.2;
+        vertices[i + 1] = 0;
+        vertices[i + 2] = cos(angle) * 0.2;
+        printf("vertices: %f, %f, %f\n", vertices[i] , vertices[i + 1] , vertices[i + 2]);
+        i += 3;
+        angle -= 2*M_PI/sides;
+    }
+    int* indices = (int*)malloc(sizeof(int) * (sides+2));
+    for(int i = 0; i <= sides;++i){
+        indices[i] = i;
+    }
+    indices[sides+1] = 1;
+
+    unsigned int VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (sides+1) * 3, vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * (sides+2), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
+    glBindVertexArray(0);
+    //free(vertices);
+    //free(indices);
+    return VAO;
+}
+
+unsigned int makeSquare(){
+    float square_vertices[] = {
+        0.1f,  0.0f, 0.1f,  // top right
+        0.1f, 0.0f, -0.1f,  // bottom right
+        -0.1f, 0.0f, -0.1f,  // bottom left
+        -0.1f,  0.0f, 0.1f   // top left 
+    };
+    unsigned int square_indices[] = {
+        0, 1, 3, // first triangle
+        1, 2, 3  // second triangle
+    };
+
+    unsigned int SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
+    glGenVertexArrays(1, &SQUARE_VAO);
+    glGenBuffers(1, &SQUARE_VBO);
+    glGenBuffers(1, &SQUARE_EBO);
+
+    glBindVertexArray(SQUARE_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, SQUARE_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUARE_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // position attribute
+    glVertexAttribPointer(1, 1, GL_INT, GL_FALSE, sizeof(int), (void*)0);
+    glEnableVertexAttribArray(1);
+
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
+    return SQUARE_VAO;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
