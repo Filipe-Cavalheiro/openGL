@@ -153,6 +153,23 @@ node getHead(linkedList list){
     return (list->head);
 }
 
+node removeIndex(linkedList list, int index){
+    node aux = getHead(list);
+    for(int i = 0; i < index; ++i){
+        if(aux == NULL){
+            return NULL;
+        }
+        aux = nextNode(aux);
+    }
+
+    node parent = prevNode(aux);
+    node child = nextNode(aux);
+    setPrevNode(child, parent);
+    setNextNode(parent, child);
+    
+    return aux;
+}
+
 node existElem(linkedList list, char *name, char *(*getName)(void *)){
     node aux = list->head;
     node aux2 = list->tail;
@@ -166,5 +183,13 @@ node existElem(linkedList list, char *name, char *(*getName)(void *)){
         aux2 = prevNode(aux2);
     }
     return NULL;
+}
+
+void print_ll(linkedList list){
+    node aux = list->head;
+    while (aux != NULL){
+        printf("%d ", *(int*)getElem(aux));
+        aux = nextNode(aux);
+    }
 }
 

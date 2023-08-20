@@ -1,6 +1,7 @@
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H
 
+#include <stdio.h>
 #include "node.h"
 typedef struct _linkedList *linkedList;
 #include "linkedList.c"
@@ -101,6 +102,16 @@ pre-conditions: list != NULL
 node getHead(linkedList list);
 
 /***********************************************
+removeIndex - removes node at certain index.
+Parameters:
+	list - list to be modified
+    index - position to be removed
+Return: -1 on error 0 on success
+pre-conditions: list != NULL, index >= 0
+***********************************************/
+node removeIndex(linkedList list, int index);
+
+/***********************************************
 existElem - return if a given element exits.
 Parameters:
 	list - sequence
@@ -110,5 +121,4 @@ Return: iterator of a sequence
 pre-conditions: list != NULL
 ***********************************************/
 node existElem(linkedList list, char *name, char *(*getName)(void *));
-
 #endif // LINKEDLIST_H
