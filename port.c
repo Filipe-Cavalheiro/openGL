@@ -17,7 +17,7 @@ int set_interface_attribs (int fd){
 
     //settings.c_iflag &= ~IGNBRK;                // disable break processing
     //settings.c_iflag &= ~(IXON | IXOFF | IXANY); // no Software flow control
-    settings.c_iflag != IGNPAR; //ignore paraty errors
+    //settings.c_iflag != IGNPAR; //ignore paraty errors
 
     settings.c_lflag = 0;           // no local flags
     settings.c_oflag = 0;           // no ouput flags

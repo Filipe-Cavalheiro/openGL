@@ -5,7 +5,7 @@
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
 #include "port.h"
-#include "data_structures/linkedList.h"
+#include "../Data-structures-in-C/linkedList.h"
 #include "cube.h"
 
 /*

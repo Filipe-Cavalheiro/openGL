@@ -2,17 +2,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
-#include "path_finding/closest_breathFirst.h"
+#include "../path-finding-in-C/bestFirst.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
-#define SENSITIVITY 0.1
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float toRad(float deg);
-unsigned int makeNsideShape(uint8_t sides);
-unsigned int makeSquare();
+unsigned int makeNsideShape(uint8_t sides, float diameter);
+unsigned int makeSquare(float diameter);
+unsigned int makeTriangle(float diameter);
+void renderNsideShape(uint8_t sides);
 
 
 // settings
@@ -101,27 +102,60 @@ int main(){
     //Clean Up, free all Vertex Array Objects
     glBindVertexArray(0);
 
-    // build and compile shader program (square)
+    // build and compile shader program (BFS)
     // ------------------------------------
-    GLuint A_starVS = glCreateShader(GL_VERTEX_SHADER);
-    compile_shader(&A_starVS, GL_VERTEX_SHADER, "shaders/path_finding.vs");
+    GLuint BFS_VS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&BFS_VS, GL_VERTEX_SHADER, "shaders/BFS.vs");
 
-    GLuint A_starFS = glCreateShader(GL_FRAGMENT_SHADER);
-    compile_shader(&A_starFS, GL_FRAGMENT_SHADER, "shaders/path_finding.fs");
+    GLuint BFS_FS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&BFS_FS, GL_FRAGMENT_SHADER, "shaders/BFS.fs");
 
-    GLuint A_starShader = glCreateProgram();
-    link_shader(A_starVS, A_starFS, A_starShader);
-    
-    unsigned int SQUARE_VAO = makeNsideShape(6); 
-    int square_state[] = {
-        0,0,0,0,0,0, 
-        0,0,1,0,1,1,
-        0,0,0,0,0,0,
-        0,0,1,1,0,0,
-        0,0,1,0,0,0,
-        0,0,0,0,0,0
+    GLuint BFS_shader = glCreateProgram();
+    link_shader(BFS_VS, BFS_FS, BFS_shader);
+
+    unsigned int NODE_VAO = makeNsideShape(6, 0.2f); 
+    int squareState[6][6] = {
+        {0,0,0,0,0,0},
+        {0,0,0,0,0,0},
+        {0,0,1,1,0,0},
+        {0,0,1,0,0,0},
+        {0,0,0,0,0,0},
+        {0,0,0,0,0,0}
     };
-    
+
+    // build and compile shader program (LINK)
+    // ------------------------------------
+    GLuint LINK_VS = glCreateShader(GL_VERTEX_SHADER);
+    compile_shader(&LINK_VS, GL_VERTEX_SHADER, "shaders/link.vs");
+
+    GLuint LINK_FS = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(&LINK_FS, GL_FRAGMENT_SHADER, "shaders/link.fs");
+
+    GLuint LINK_shader = glCreateProgram();
+    link_shader(LINK_VS, LINK_FS, LINK_shader);
+
+    unsigned int LINK_VAO = makeNsideShape(4, 0.05f); 
+    int linkCost[] = {
+        255,255,255,255,255, //row        0
+        255,1  ,255,255,255, //collum     5
+        255,255,255,255,255, //diagonal   10
+        1,255,255,1,255,    //row       15
+        4,1,5,1,2,          //collum    20
+        1,1,1,1,1,          //diagonal  25
+        1,1,1,1,1,          //row       30
+        1,1,1,1,1,          //collum    35
+        1,1,1,255,1,        //diagonal  40
+        1,1,1,1,1,          //row
+        1,1,1,1,1,          //collum
+        1,1,1,1,1,          //diagonal
+        1,1,1,1,1,          //row
+        1,1,1,1,1,          //collum
+        1,1,1,1,1,          //diagonal
+        1,1,1,1,1,          //row
+        1,1,1,1,1,          //collum
+        1,1,1,1,1           //diagonal
+    };
+
     //coordinate-System variabels 
     mat4 matrix_model;
     mat4 matrix_view;
@@ -135,15 +169,11 @@ int main(){
     float currentFrame;
     float lastFrame = 0;
 
-    //breathFirst set up
-    int startingPos[2] = {3, 4}; 
-    int finishPos[2] = {1, 2};
-    linkedList BFSpath = breathFirstSearch(startingPos, finishPos, square_state);
-    if(BFSpath == NULL){
-        printf("could not create BFS path\n");
-    }
-    square_state[startingPos[0] + startingPos[1] *6] = 2; 
-    square_state[finishPos[0] + finishPos[1] *6] = 3; 
+    //path finding
+    int startPos[2] = {0,0};
+    int finishPos[2] = {3,3};
+    bestFirst(startPos, finishPos, squareState);
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -184,38 +214,100 @@ int main(){
         glDrawElements(GL_TRIANGLES, 8, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
 
-        //create transformations(square)
-        glUseProgram(A_starShader);
+        glUseProgram(LINK_shader);
 
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(A_starShader, "view");
+        viewLoc = glGetUniformLocation(BFS_shader, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
 
         glm_mat4_identity(matrix_projection);
         glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(A_starShader, "projection");
+        projectionLoc = glGetUniformLocation(BFS_shader, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
-        glBindVertexArray(SQUARE_VAO);
+        glBindVertexArray(LINK_VAO);
         int count = 0;
         unsigned int stateLoc;
         for(float i = -1.25; i < 1.75;){
-                for(float j = -1.25; j < 1.75;){
-                    glm_mat4_identity(matrix_model);
-                    glm_translate(matrix_model, (vec3){i, 0, j});
-                    modelLoc = glGetUniformLocation(A_starShader, "model");
-                    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-                    
-                    stateLoc = glGetUniformLocation(A_starShader, "state");
-                    glUniform1i(stateLoc, square_state[count]);
-                    
-                    glDrawElements(GL_TRIANGLE_FAN, 8, GL_UNSIGNED_INT, 0);
-                    j += 0.5;
-                    ++count;
-                }
-                i += 0.5;
+            for(float j = -1; j < 1.5;){
+                glm_mat4_identity(matrix_model);
+                glm_translate(matrix_model, (vec3){i, 0, j});
+                modelLoc = glGetUniformLocation(LINK_shader, "model");
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+                stateLoc = glGetUniformLocation(LINK_shader, "state");
+                glUniform1i(stateLoc, linkCost[count]);
+
+                renderNsideShape(4);
+                j += 0.5;
+                ++count;
+            }
+            i += 0.25;
+            if(i >= 1.5)
+                break;
+            for(float j = -1; j < 1.5;){
+                glm_mat4_identity(matrix_model);
+                glm_translate(matrix_model, (vec3){i, 0, j});
+                modelLoc = glGetUniformLocation(LINK_shader, "model");
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+                stateLoc = glGetUniformLocation(LINK_shader, "state");
+                glUniform1i(stateLoc, linkCost[count]);
+
+                renderNsideShape(4);
+                j += 0.5;
+                ++count;
+            }
+            for(float j = -1.25; j < 1.75;){
+                glm_mat4_identity(matrix_model);
+                glm_translate(matrix_model, (vec3){i, 0, j});
+                modelLoc = glGetUniformLocation(LINK_shader, "model");
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+                stateLoc = glGetUniformLocation(LINK_shader, "state");
+                glUniform1i(stateLoc, linkCost[count]);
+
+                renderNsideShape(4);
+                j += 0.5;
+                ++count;
+            }
+            i += 0.25;
+        }
+
+        glUseProgram(BFS_shader);
+
+        glm_mat4_identity(matrix_view);
+        for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
+        glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
+        viewLoc = glGetUniformLocation(BFS_shader, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
+
+        glm_mat4_identity(matrix_projection);
+        glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
+        projectionLoc = glGetUniformLocation(BFS_shader, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
+
+        glBindVertexArray(NODE_VAO);
+        int row = 0;
+        for(float i = -1.25; i < 1.75;){
+            int collum = 0;
+            for(float j = -1.25; j < 1.75;){
+                glm_mat4_identity(matrix_model);
+                glm_translate(matrix_model, (vec3){i, 0, j});
+                modelLoc = glGetUniformLocation(BFS_shader, "model");
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+                stateLoc = glGetUniformLocation(BFS_shader, "state");
+                glUniform1i(stateLoc, squareState[row][collum]);
+
+                renderNsideShape(6);
+                j += 0.5;
+                ++collum;
+            }
+            ++row;
+            i += 0.5;
         }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -236,22 +328,29 @@ int main(){
     return 0;
 }
 
-unsigned int makeNsideShape(uint8_t sides){
+void renderNsideShape(uint8_t sides){
+    if(sides == 3){
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        return;
+    }
+    glDrawElements(GL_TRIANGLE_FAN, sides+2, GL_UNSIGNED_INT, 0);
+}
+
+unsigned int makeNsideShape(uint8_t sides, float diameter){
+    if(sides == 3)
+        return makeTriangle(diameter);
     if (sides == 4){
-        return makeSquare();
+        return makeSquare(diameter);
     }
     float* vertices = (float*)malloc(sizeof(float) * (sides+1) * 3);
     vertices[0] = 0;
     vertices[1] = 0;
     vertices[2] = 0;
-    printf("vertices: %f, %f, %f\n", vertices[0] , vertices[1] , vertices[2]);
-    float angle = 0;
+    float angle = 2*M_PI/sides;
     for(int i = 3; i <= sides*3;){
-        printf("angle:%f\n", angle);
-        vertices[i] = sin(angle) * 0.2;
+        vertices[i] = sin(angle) * diameter;
         vertices[i + 1] = 0;
-        vertices[i + 2] = cos(angle) * 0.2;
-        printf("vertices: %f, %f, %f\n", vertices[i] , vertices[i + 1] , vertices[i + 2]);
+        vertices[i + 2] = cos(angle) * diameter;
         i += 3;
         angle -= 2*M_PI/sides;
     }
@@ -280,17 +379,45 @@ unsigned int makeNsideShape(uint8_t sides){
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
     glBindVertexArray(0);
-    //free(vertices);
-    //free(indices);
+    free(vertices);
+    free(indices);
     return VAO;
 }
 
-unsigned int makeSquare(){
+unsigned int makeTriangle(float diameter){
+    float vertices[] = {
+        -(float)diameter, 0.0f, -(float)diameter,  // left  
+        (float)diameter, 0.0f, -(float)diameter,  // right 
+        0.0f, 0.0f,   (float)diameter  // top   
+    }; 
+
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0); 
+    return VAO; 
+}
+
+unsigned int makeSquare(float diameter){
     float square_vertices[] = {
-        0.1f,  0.0f, 0.1f,  // top right
-        0.1f, 0.0f, -0.1f,  // bottom right
-        -0.1f, 0.0f, -0.1f,  // bottom left
-        -0.1f,  0.0f, 0.1f   // top left 
+        diameter,  0.0f, diameter,  // top right
+        diameter, 0.0f, -diameter,  // bottom right
+        -diameter, 0.0f, -diameter,  // bottom left
+        -diameter,  0.0f, diameter   // top left 
     };
     unsigned int square_indices[] = {
         0, 1, 3, // first triangle

@@ -1,7 +1,7 @@
 #ifndef CUBE_H
 #define CUBE_H
 
-#include "data_structures/linkedList.h"
+#include "../Data-structures-in-C/linkedList.h"
 #include "cube.c"
 
 Cube* makeCube(vec3 position, vec3 size); 
