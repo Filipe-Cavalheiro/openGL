@@ -245,3 +245,98 @@ void renderSphere(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, int numSlices
     glBindVertexArray(VAO);
     glDrawArrays(GL_LINES, 0, (numSlices + 1) * (numStacks + 1));
 }
+
+unsigned int makeCuboid(float width, float height, float lenght){
+    float cube_vertices[] = {
+        -width, -height, -lenght,
+        width, -height, -lenght,
+        width,  height, -lenght,  
+        width,  height, -lenght,  
+        -width,  height, -lenght,  
+        -width, -height, -lenght,  
+
+        -width, -height,  lenght,  
+        width, -height,  lenght,  
+        width,  height,  lenght,  
+        width,  height,  lenght,  
+        -width,  height,  lenght,  
+        -width, -height,  lenght,  
+
+        -width,  height,  lenght,  
+        -width,  height, -lenght,  
+        -width, -height, -lenght,  
+        -width, -height, -lenght,  
+        -width, -height,  lenght,  
+        -width,  height,  lenght,  
+
+        width,  height,  lenght,  
+        width,  height, -lenght,  
+        width, -height, -lenght,  
+        width, -height, -lenght,  
+        width, -height,  lenght,  
+        width,  height,  lenght,  
+
+        -width, -height, -lenght,  
+        width, -height, -lenght,  
+        width, -height,  lenght,  
+        width, -height,  lenght,  
+        -width, -height,  lenght,  
+        -width, -height, -lenght,  
+
+        -width,  height, -lenght,  
+        width,  height, -lenght,  
+        width,  height,  lenght,  
+        width,  height,  lenght,  
+        -width,  height,  lenght,  
+        -width,  height, -lenght,  
+    };
+    unsigned int CUBE_VBO, CUBE_VAO;
+    glGenVertexArrays(1, &CUBE_VAO);
+    glGenBuffers(1, &CUBE_VBO);
+
+    glBindVertexArray(CUBE_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, CUBE_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    //Clean Up, free all Vertex Array Objects
+    glBindVertexArray(0);
+    glDeleteBuffers(1, &CUBE_VBO);
+    return CUBE_VAO;
+}
+
+void renderCuboid(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int shader, unsigned int VAO, vec3 position, vec3 axis, float angle){
+    mat4 matrix_model;
+    mat4 matrix_view;
+    mat4 matrix_projection;
+    unsigned int modelLoc;
+    unsigned int viewLoc;
+    unsigned int projectionLoc;
+    vec3 cameraTemp;
+    glUseProgram(shader);
+
+    glm_mat4_identity(matrix_model);
+    glm_translate(matrix_model, position);
+    glm_rotate(matrix_model, angle, axis);
+    modelLoc = glGetUniformLocation(shader, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
+
+    // calculate the model matrix for each object and pass it to shader before drawing
+    glm_mat4_identity(matrix_view);
+    for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
+    glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
+    viewLoc = glGetUniformLocation(shader, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
+
+    glm_mat4_identity(matrix_projection);
+    glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
+    projectionLoc = glGetUniformLocation(shader, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}

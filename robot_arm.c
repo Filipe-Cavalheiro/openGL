@@ -2,6 +2,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
+#include "shapes.h"
+#include "../Data-structures-in-C/linkedList.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -30,6 +32,79 @@ float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 
 float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
+
+typedef struct {
+    vec3 size;
+    vec3 position;
+    vec3 pivot;
+    float angle;
+    unsigned int VAO;
+}*robotPart, _robotPart;
+
+robotPart makeRobotPart(vec3 size, vec3 position,vec3 pivot, float angle){
+    robotPart elem = (robotPart)malloc(sizeof(_robotPart));
+    elem->size[0] = size[0];
+    elem->size[1] = size[1];
+    elem->size[2] = size[2];
+    elem->position[0] = position[0];
+    elem->position[1] = position[1];
+    elem->position[2] = position[2];
+    elem->pivot[0] = pivot[0];
+    elem->pivot[1] = pivot[1];
+    elem->pivot[2] = pivot[2];
+    elem->angle = angle;
+    elem->VAO = makeCuboid(size[0], size[1], size[2]);
+    return elem;
+}
+
+void rotateArm(linkedList list, int index, float angle){
+    node motorNode = getHead(list);
+    for(int i = 0; i < index; ++i){
+        if(motorNode == NULL)
+            return;
+        motorNode = nextNode(motorNode);
+    }
+    robotPart motor = getElem_node(motorNode);
+    motor->angle = angle;
+    motorNode = nextNode(motorNode);
+    while(motorNode != NULL){          
+        motor = getElem_node(motorNode);
+        motorNode = nextNode(motorNode);
+    }
+}
+
+// Function to perform a rotation around the X-axis
+void rotateZ(vec3 position, float angle) {
+    float matrix[3][3];
+    matrix[0][0] = position[0];
+    matrix[1][1] = position[1];
+    matrix[2][2] = position[2];
+
+    float cosA = cosf(M_PI);
+    float sinA = sinf(M_PI);
+
+    float rotationMatrix[3][3] = {
+        {cosA, -sinA, 0},
+        {sinA, cosA, 0},
+        {0, 0, 1}
+    };
+
+    float tmp[3][3];
+    memset(tmp, 0, sizeof(tmp));
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                tmp[i][j] += matrix[i][k] * rotationMatrix[k][j];
+            }
+        }
+    }
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            printf("%f,", tmp[i][j]);
+        }
+            printf("\n");
+    }
+}
 
 int main(){
     // glfw: initialize and configure
@@ -119,70 +194,26 @@ int main(){
     GLuint cubeShader = glCreateProgram();
     link_shader(cubeVS, cubeFS, cubeShader);
 
-    float cube_vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
+    linkedList list = makeLinkedList();
+    robotPart motor;
+    motor = makeRobotPart((vec3){0.8f, 0.2f, 0.8f}, (vec3){0.0f, 0.2f, 0.0f}, (vec3){0, 1, 0}, M_PI/2);
+    append(list, motor); 
+    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){0.0f, 1.4f, 0.0f}, (vec3){0, 1, 0}, 0);
+    append(list, motor); 
+    motor = makeRobotPart((vec3){1.0f, 0.2f, 0.2f}, (vec3){0.7f, 2.4f, 0.0f}, (vec3){0, 1, 0}, 0);
+    append(list, motor); 
+    motor = makeRobotPart((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){0, 1, 0}, 0);
+    append(list, motor); 
+    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){0, 1, 0}, 0);
+    append(list, motor); 
+    motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 1, 0}, 0);
+    append(list, motor); 
 
-        -0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-
-        -0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-
-        -0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-    };
-    unsigned int CUBE_VBO, CUBE_VAO;
-    glGenVertexArrays(1, &CUBE_VAO);
-    glGenBuffers(1, &CUBE_VBO);
-
-    glBindVertexArray(CUBE_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, CUBE_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    //Clean Up, free all Vertex Array Objects
-    glBindVertexArray(0);
+    rotateZ((vec3){1,0,1}, M_PI);
 
     //Coordinate-System variabels 
-    mat4 matrix_model;
     mat4 matrix_view;
     mat4 matrix_projection;
-    unsigned int modelLoc;
     unsigned int viewLoc;
     unsigned int projectionLoc;
     vec3 cameraTemp;
@@ -230,30 +261,12 @@ int main(){
         glBindVertexArray(GRID_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
-
-        //create transformations(cube)
-        glUseProgram(cubeShader);
-
-        glm_mat4_identity(matrix_model);
-        glm_translate(matrix_model, (vec3){0.0f, 0.5f, 0.0f});
-        modelLoc = glGetUniformLocation(cubeShader, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-
-        // calculate the model matrix for each object and pass it to shader before drawing
-        glm_mat4_identity(matrix_view);
-        for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
-        glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(cubeShader, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
-
-        glm_mat4_identity(matrix_projection);
-        glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(cubeShader, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
-
-        glBindVertexArray(CUBE_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
+        node motorNode = getHead(list);
+        while(motorNode != NULL){          
+            motor = getElem_node(motorNode);
+            renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, motor->VAO, motor->position, motor->pivot, motor->angle);
+            motorNode = nextNode(motorNode);
+        }
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -265,8 +278,6 @@ int main(){
     glDeleteVertexArrays(1, &GRID_VAO);
     glDeleteBuffers(1, &GRID_VBO);
     glDeleteBuffers(1, &GRID_EBO);
-    glDeleteVertexArrays(1, &CUBE_VAO);
-    glDeleteBuffers(1, &CUBE_VBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
