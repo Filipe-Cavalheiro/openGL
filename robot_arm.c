@@ -8,11 +8,15 @@
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
 #define SENSITIVITY 0.1
+#define ARROWKEYS '-'
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 float toRad(float deg);
+void set_currently_pressed_key(uint8_t key);
+void clear_currently_pressed_key(uint8_t key);
+uint8_t get_currently_pressed_key(uint8_t key);
 
 // settings
 #define SCR_WIDTH 800
@@ -33,15 +37,19 @@ float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
 
+float generalAngle = 0;
+uint8_t currently_pressed_keys[30] = {0};
+
 typedef struct {
     vec3 size;
     vec3 position;
     vec3 pivot;
     float angle;
     unsigned int VAO;
+    mat4 matrix;
 }*robotPart, _robotPart;
 
-robotPart makeRobotPart(vec3 size, vec3 position,vec3 pivot, float angle){
+robotPart makeRobotPart(vec3 size, vec3 position, vec3 pivot, float angle){
     robotPart elem = (robotPart)malloc(sizeof(_robotPart));
     elem->size[0] = size[0];
     elem->size[1] = size[1];
@@ -64,45 +72,19 @@ void rotateArm(linkedList list, int index, float angle){
             return;
         motorNode = nextNode(motorNode);
     }
-    robotPart motor = getElem_node(motorNode);
-    motor->angle = angle;
-    motorNode = nextNode(motorNode);
-    while(motorNode != NULL){          
+    float result[2] = {0,0};
+    robotPart motor;
+    while(motorNode != NULL){                  
         motor = getElem_node(motorNode);
+        float diff = angle - motor->angle; 
+        if(motor->angle != angle){
+            result[0] = motor->position[0] * cos(diff) - motor->position[2] * sin(diff);
+            result[1] = motor->position[0] * sin(diff) + motor->position[2] * cos(diff);
+            motor->position[0] = result[0];
+            motor->position[2] = result[1];
+        }
+        motor->angle = angle;
         motorNode = nextNode(motorNode);
-    }
-}
-
-// Function to perform a rotation around the X-axis
-void rotateZ(vec3 position, float angle) {
-    float matrix[3][3];
-    matrix[0][0] = position[0];
-    matrix[1][1] = position[1];
-    matrix[2][2] = position[2];
-
-    float cosA = cosf(M_PI);
-    float sinA = sinf(M_PI);
-
-    float rotationMatrix[3][3] = {
-        {cosA, -sinA, 0},
-        {sinA, cosA, 0},
-        {0, 0, 1}
-    };
-
-    float tmp[3][3];
-    memset(tmp, 0, sizeof(tmp));
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            for (int k = 0; k < 3; k++) {
-                tmp[i][j] += matrix[i][k] * rotationMatrix[k][j];
-            }
-        }
-    }
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            printf("%f,", tmp[i][j]);
-        }
-            printf("\n");
     }
 }
 
@@ -137,7 +119,6 @@ int main(){
         fprintf(stderr, "Failed to initialize GLAD\n");
         return -1;
     }
-
 
     // build and compile shader program (grid)
     // ------------------------------------
@@ -201,16 +182,15 @@ int main(){
     motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){0.0f, 1.4f, 0.0f}, (vec3){0, 1, 0}, 0);
     append(list, motor); 
     motor = makeRobotPart((vec3){1.0f, 0.2f, 0.2f}, (vec3){0.7f, 2.4f, 0.0f}, (vec3){0, 1, 0}, 0);
-    append(list, motor); 
+    append(list, motor);
+    printf("position: %f, %f\n", motor->position[0], motor->position[2]);
     motor = makeRobotPart((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){0, 1, 0}, 0);
     append(list, motor); 
     motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){0, 1, 0}, 0);
     append(list, motor); 
     motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 1, 0}, 0);
-    append(list, motor); 
-
-    rotateZ((vec3){1,0,1}, M_PI);
-
+    append(list, motor);
+    
     //Coordinate-System variabels 
     mat4 matrix_view;
     mat4 matrix_projection;
@@ -221,7 +201,7 @@ int main(){
     //time variables
     float currentFrame;
     float lastFrame = 0;
-
+    
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -261,10 +241,13 @@ int main(){
         glBindVertexArray(GRID_VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
+        
+        rotateArm(list, 2, generalAngle);
+
         node motorNode = getHead(list);
-        while(motorNode != NULL){          
+        while(motorNode != NULL){
             motor = getElem_node(motorNode);
-            renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, motor->VAO, motor->position, motor->pivot, motor->angle);
+            renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, motor->VAO, motor->position, motor->pivot, -motor->angle);
             motorNode = nextNode(motorNode);
         }
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -288,8 +271,14 @@ int main(){
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window){
     vec3 cameraTemp;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
-        glfwSetWindowShouldClose(window, 1);
+    if(get_currently_pressed_key('q') && glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE){
+        clear_currently_pressed_key('q');
+    }
+    if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
+        if(!get_currently_pressed_key('q')){    
+            glfwSetWindowShouldClose(window, 1);
+            set_currently_pressed_key('q');
+        }
     }
     float frameCameraSpeed = deltaTime * CAMERASPEED;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
@@ -323,6 +312,16 @@ void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
         for(int i = 0; i < 3; ++i)
             cameraPos[i] -= cameraUp[i] * frameCameraSpeed;
+    }
+    /*
+    if(get_currently_pressed_key('l') && glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE){
+        clear_currently_pressed_key('l');
+    }*/
+    if(glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
+        //if(!get_currently_pressed_key('l')){   
+            generalAngle += 0.05;
+            //set_currently_pressed_key('l');
+        //}
     }
 }
 
@@ -377,4 +376,27 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn){
 
 float toRad(float deg){
     return deg * (M_PI/180);
+}
+
+void set_currently_pressed_key(uint8_t key){
+    if(key == ARROWKEYS){ 
+        currently_pressed_keys[27] = 1;
+        return;
+    }
+    currently_pressed_keys[key - 'a'] = 1;
+}
+
+void clear_currently_pressed_key(uint8_t key){
+    if(key == ARROWKEYS){ 
+        currently_pressed_keys[27] = 0;
+        return;
+    }
+    currently_pressed_keys[key - 'a'] = 0;
+}
+
+uint8_t get_currently_pressed_key(uint8_t key){
+    if(key == ARROWKEYS){ 
+        return currently_pressed_keys[27];
+    }
+    return currently_pressed_keys[key - 'a'];
 }
