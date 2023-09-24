@@ -246,7 +246,15 @@ void renderSphere(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, int numSlices
     glDrawArrays(GL_LINES, 0, (numSlices + 1) * (numStacks + 1));
 }
 
-unsigned int makeCuboid(float width, float height, float lenght){
+typedef struct {
+    vec3 size;
+    vec3 position;
+    vec3 angles;
+    float angle;
+    unsigned int VAO;
+}_cuboid, *cuboid;
+
+unsigned int makeCuboidVAO(float width, float height, float lenght){
     float cube_vertices[] = {
         -width, -height, -lenght,
         width, -height, -lenght,
@@ -309,7 +317,22 @@ unsigned int makeCuboid(float width, float height, float lenght){
     return CUBE_VAO;
 }
 
-void renderCuboid(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int shader, unsigned int VAO, vec3 position, vec3 axis, float angle){
+cuboid makeCuboid(vec3 size, vec3 position, vec3 angles){
+    cuboid elem = (cuboid)malloc(sizeof(_cuboid));
+    elem->size[0] = size[0];
+    elem->size[1] = size[1];
+    elem->size[2] = size[2];
+    elem->position[0] = position[0];
+    elem->position[1] = position[1];
+    elem->position[2] = position[2];
+    elem->angles[0] = angles[0];
+    elem->angles[1] = angles[1];
+    elem->angles[2] = angles[2];
+    elem->VAO = makeCuboidVAO(size[0], size[1], size[2]);
+    return elem;
+}
+
+void renderCuboid(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int shader, cuboid elem){
     mat4 matrix_model;
     mat4 matrix_view;
     mat4 matrix_projection;
@@ -320,8 +343,10 @@ void renderCuboid(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int 
     glUseProgram(shader);
 
     glm_mat4_identity(matrix_model);
-    glm_translate(matrix_model, position);
-    glm_rotate(matrix_model, angle, axis);
+    glm_translate(matrix_model, elem->position);
+    glm_rotate(matrix_model, elem->angles[0], (vec3){1, 0, 0});
+    glm_rotate(matrix_model, elem->angles[1], (vec3){0, 1, 0});
+    glm_rotate(matrix_model, elem->angles[2], (vec3){0, 0, 1});
     modelLoc = glGetUniformLocation(shader, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
 
@@ -337,6 +362,6 @@ void renderCuboid(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int 
     projectionLoc = glGetUniformLocation(shader, "projection");
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
 
-    glBindVertexArray(VAO);
+    glBindVertexArray(elem->VAO);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 }

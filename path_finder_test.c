@@ -2,7 +2,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
-#include "../path-finding-in-C/bestFirst.h"
+#include "../path-finding-in-C/aStar.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -172,7 +172,7 @@ int main(){
     //path finding
     int startPos[2] = {0,0};
     int finishPos[2] = {3,3};
-    bestFirst(startPos, finishPos, squareState);
+    aStar(startPos, finishPos, squareState, linkCost);
 
     // render loop
     // -----------

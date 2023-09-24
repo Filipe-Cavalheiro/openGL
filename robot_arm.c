@@ -5,6 +5,7 @@
 #include "shapes.h"
 #include "../Data-structures-in-C/linkedList.h"
 #include <math.h>
+#include "motor.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -38,121 +39,9 @@ float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
 
-float generalAngle = 0;
+float armsAngle[4] = {0,0,0,0};
 uint8_t arms[4] = {0,0,0,0};
 uint8_t currently_pressed_keys[30] = {0};
-
-typedef struct {
-    vec3 size;
-    vec3 position;
-    vec3 pivot;
-    float angle;
-    unsigned int VAO;
-    mat4 matrix;
-}*robotPart, _robotPart;
-
-robotPart makeRobotPart(vec3 size, vec3 position, vec3 pivot, float angle){
-    robotPart elem = (robotPart)malloc(sizeof(_robotPart));
-    elem->size[0] = size[0];
-    elem->size[1] = size[1];
-    elem->size[2] = size[2];
-    elem->position[0] = position[0];
-    elem->position[1] = position[1];
-    elem->position[2] = position[2];
-    elem->pivot[0] = pivot[0];
-    elem->pivot[1] = pivot[1];
-    elem->pivot[2] = pivot[2];
-    elem->angle = angle;
-    elem->VAO = makeCuboid(size[0], size[1], size[2]);
-    return elem;
-}
-
-void rotateArm(linkedList list, int index, float angle) {
-    node motorNode = getHead(list);
-    index--;
-    for (int i = 0; i < index; ++i) {
-        if (motorNode == NULL)
-            return;
-        motorNode = nextNode(motorNode);
-    }
-
-    robotPart motor = getElem_node(motorNode);
-
-    float rotationPoint[3] = {motor->position[0], motor->position[1], motor->position[2]};
-    float pivot[3] = {motor->pivot[0], motor->pivot[1], motor->pivot[2]};
-    motorNode = nextNode(motorNode);
-    if (motorNode == NULL)
-        return;
-
-    while (motorNode != NULL) {
-        motor = getElem_node(motorNode);
-        float cosDiff = cos(angle - motor->angle);
-        float sinDiff = sin(angle - motor->angle);
-
-        motor->position[0] -= rotationPoint[0];
-        motor->position[1] -= rotationPoint[1];
-        motor->position[2] -= rotationPoint[2];
-
-        // Apply Rodrigues' rotation formula
-        float result[3] = {
-            motor->position[0] * (cosDiff + pivot[0] * pivot[0] * (1 - cosDiff)) + 
-                motor->position[1] * (pivot[0] * pivot[1] * (1 - cosDiff) - pivot[2] * sinDiff) + 
-                motor->position[2] * (pivot[0] * pivot[2] * (1 - cosDiff) + pivot[1] * sinDiff),
-
-            motor->position[0] * (pivot[1] * pivot[0] * (1 - cosDiff) + pivot[2] * sinDiff) + 
-                motor->position[1] * (cosDiff + pivot[1] * pivot[1] * (1 - cosDiff)) + 
-                motor->position[2] * (pivot[1] * pivot[2] * (1 - cosDiff) - pivot[0] * sinDiff),
-
-            motor->position[0] * (pivot[2] * pivot[0] * (1 - cosDiff) - pivot[1] * sinDiff) + 
-                motor->position[1] * (pivot[2] * pivot[1] * (1 - cosDiff) + pivot[0] * sinDiff) + 
-                motor->position[2] * (cosDiff + pivot[2] * pivot[2] * (1 - cosDiff))
-        };
-
-        motor->position[0] = result[0];
-        motor->position[1] = result[1];
-        motor->position[2] = result[2];
-
-        motor->position[0] += rotationPoint[0];
-        motor->position[1] += rotationPoint[1];
-        motor->position[2] += rotationPoint[2];
-
-        result[0] = motor->pivot[0] * (cosDiff + pivot[0] * pivot[0] * (1 - cosDiff)) + 
-            motor->pivot[1] * (pivot[0] * pivot[1] * (1 - cosDiff) - pivot[2] * sinDiff) + 
-            motor->pivot[2] * (pivot[0] * pivot[2] * (1 - cosDiff) + pivot[1] * sinDiff);
-
-        result[1] = motor->pivot[0] *(pivot[1] * pivot[0] * (1 - cosDiff) + pivot[2] * sinDiff) + 
-            motor->pivot[1] * (cosDiff + pivot[1] * pivot[1] * (1 - cosDiff)) + 
-            motor->pivot[2] * (pivot[1] * pivot[2] * (1 - cosDiff) - pivot[0] * sinDiff);
-
-        result[2] = motor->pivot[0] *(pivot[2] * pivot[0] * (1 - cosDiff) - pivot[1] * sinDiff) + 
-            motor->pivot[1] * (pivot[2] * pivot[1] * (1 - cosDiff) + pivot[0] * sinDiff) + 
-            motor->pivot[2] * (cosDiff + pivot[2] * pivot[2] * (1 - cosDiff));
-
-        motor->pivot[0] = result[0];
-        motor->pivot[1] = result[1];
-        motor->pivot[2] = result[2];
-        printf("pivot: %f, %f, %f\n", motor->pivot[0], motor->pivot[1], motor->pivot[2]);
-        motorNode = nextNode(motorNode);
-        motor->angle = angle;
-    }
-}
-/*
-//rotation
-motor->position[1] -= rotationPoint[1];
-motor->position[2] -= rotationPoint[2];
-result[0] = motor->position[2] * sin(diff) + motor->position[1] * cos(diff);
-result[1] = motor->position[2] * cos(diff) - motor->position[1] * sin(diff);
-motor->position[1] = result[0];
-motor->position[2] = result[1];
-motor->position[1] += rotationPoint[1]; 
-motor->position[2] += rotationPoint[2];
-
-//axis calculation
-result[0] = motor->pivot[2] * sin(diff) + motor->pivot[1] * cos(diff);
-result[1] = motor->pivot[2] * cos(diff) - motor->pivot[1] * sin(diff);
-motor->pivot[1] = result[0];
-motor->pivot[2] = result[1];
-*/
 
 int main(){
     // glfw: initialize and configure
@@ -242,20 +131,17 @@ int main(){
     link_shader(cubeVS, cubeFS, cubeShader);
 
     linkedList list = makeLinkedList();
-    robotPart motor;
-    motor = makeRobotPart((vec3){0.8f, 0.2f, 0.8f}, (vec3){0.0f, 0.2f, 0.0f}, (vec3){0, 1, 0}, 0);
+    int type[4] = {0, 0, 1, 1};
+    append(list, makeCuboid((vec3){0.8f, 0.2f, 0.8f}, (vec3){0.0f, 0.2f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f})); 
+    append(list, makeCuboid((vec3){0.2f, 1.0f, 0.2f}, (vec3){0.0f, 1.4f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f})); 
+    append(list, makeMotor((vec3){1.0f, 0.2f, 0.2f}, (vec3){0.8f, 2.4f, 0.0f}, (vec3){0, 1, 0}, (vec3){0, 2.4f, 0}, 0.0f));
+    append(list, makeMotor((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){1, 0, 0}, (vec3){1.9f, 2.4f, 0.0f}, 0.0f));
+    /*
+    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){0, 1, 0}, 0);
     append(list, motor); 
-    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){0.0f, 1.4f, 0.0f}, (vec3){0, 1, 0}, 0);
-    append(list, motor); 
-    motor = makeRobotPart((vec3){1.0f, 0.2f, 0.2f}, (vec3){0.7f, 2.4f, 0.0f}, (vec3){1, 0, 0}, 0);
+    motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 0, 0}, 0);
     append(list, motor);
-    motor = makeRobotPart((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){0, 1, 0}, 0);
-    append(list, motor); 
-    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){1, 0, 0}, 0);
-    append(list, motor); 
-    motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 0, 1}, 0);
-    append(list, motor);
-
+    */
     //Coordinate-System variabels 
     mat4 matrix_view;
     mat4 matrix_projection;
@@ -267,8 +153,8 @@ int main(){
     float currentFrame;
     float lastFrame = 0;
 
-
-    float pivot[3] = {0,1,0};
+    vec3 axis = {0, 0, 0};
+    int count = 3;
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -310,31 +196,38 @@ int main(){
         glDisable(GL_BLEND);
 
         if(arms[0] == 1){
-            rotateArm(list, 2, generalAngle);
-            node robotNode = getIndex(list, 1);
-            robotPart elem = getElem_node(robotNode);
-            pivot[0] = elem->pivot[0];
-            pivot[1] = elem->pivot[1];
-            pivot[2] = elem->pivot[2];
+            count = 2;
+            node elemNode = getIndex(list, 2);
+            motor elem = getElem_node(elemNode);
+            axis[0] = elem->axis[0];
+            axis[1] = elem->axis[1];
+            axis[2] = elem->axis[2];
+            rotateArm(list, 2, armsAngle[0]);
             arms[0] = 0;
         }
-
         if(arms[1] == 1){
-            rotateArm(list, 3, generalAngle);
-            node robotNode = getIndex(list, 2);
-            robotPart elem = getElem_node(robotNode);
-            pivot[0] = elem->pivot[0];
-            pivot[1] = elem->pivot[1];
-            pivot[2] = elem->pivot[2];
+            count = 3;
+            node elemNode = getIndex(list, 3);
+            motor elem = getElem_node(elemNode);
+            axis[0] = elem->axis[0];
+            axis[1] = elem->axis[1];
+            axis[2] = elem->axis[2];
+            rotateArm(list, 3, armsAngle[1]);
             arms[1] = 0;
         }
 
-        node motorNode = getHead(list);
-        while(motorNode != NULL){
-            motor = getElem_node(motorNode);
-            renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, motor->VAO, motor->position, pivot, motor->angle);
-            motorNode = nextNode(motorNode);
+        node armNode = getHead(list);
+        int i = 0;
+        while(armNode != NULL){
+            void* armPart = getElem_node(armNode);
+            if(type[i] == 0)
+                renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, armPart);
+            else
+                renderMotor(cameraPos, cameraFront, cameraUp, cubeShader, armPart, list, i); 
+            armNode = nextNode(armNode);
+            ++i;
         }
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -404,13 +297,19 @@ void processInput(GLFWwindow *window){
     if(glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
         if(!get_currently_pressed_key('l')){    
             arms[0] = 1;
-            generalAngle += M_PI/4;
+            armsAngle[0] += M_PI/4;
             set_currently_pressed_key('l');
         }
     }
+    if(get_currently_pressed_key('k') && glfwGetKey(window, GLFW_KEY_K) == GLFW_RELEASE){
+        clear_currently_pressed_key('k');
+    }
     if(glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
-        arms[1] = 1;
-        generalAngle += 0.05;
+        if(!get_currently_pressed_key('k')){    
+            arms[1] = 1;
+            armsAngle[1] += M_PI/4;
+            set_currently_pressed_key('k');
+        }
     }
 }
 
