@@ -41,11 +41,11 @@ void renderMotor(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int s
     glm_mat4_identity(matrix_model);
     glm_translate(matrix_model, elem->position);
 
-    node motorNode = getIndex(motorList, 2);
+    node motorNode = getIndex(motorList, index);
     for(int i = 2; i <= index; ++i){
         motor tmpMotor = getElem_node(motorNode);
         glm_rotate(matrix_model, tmpMotor->angle, tmpMotor->axis);
-        motorNode = nextNode(motorNode);
+        motorNode = prevNode(motorNode);
     }
 
     modelLoc = glGetUniformLocation(shader, "model");
@@ -72,19 +72,20 @@ void rotateArm(linkedList list, int index, float angle){
     motor motor = getElem_node(motorNode);
     float rotationPoint[3] = {motor->pivot[0], motor->pivot[1], motor->pivot[2]};
     float axis[3] = {motor->axis[0], motor->axis[1], motor->axis[2]};
-    float tmpAngle = motor->angle;
+    float cosDiff;
+    float sinDiff;
+    cosDiff = cos(angle - motor->angle);
+    sinDiff = sin(angle - motor->angle);
     motor->angle = angle;
 
     while (motorNode != NULL) {
         motor = getElem_node(motorNode);
-        float cosDiff = cos(angle - tmpAngle);
-        float sinDiff = sin(angle - tmpAngle);
 
         motor->position[0] -= rotationPoint[0];
         motor->position[1] -= rotationPoint[1];
         motor->position[2] -= rotationPoint[2];
         // Apply Rodrigues' rotation formula
-        float result[3] = {
+        vec3 result = {
             motor->position[0] * (cosDiff + axis[0] * axis[0] * (1 - cosDiff)) + 
                 motor->position[1] * (axis[0] * axis[1] * (1 - cosDiff) - axis[2] * sinDiff) + 
                 motor->position[2] * (axis[0] * axis[2] * (1 - cosDiff) + axis[1] * sinDiff),
@@ -103,23 +104,7 @@ void rotateArm(linkedList list, int index, float angle){
         motor->position[0] += rotationPoint[0];
         motor->position[1] += rotationPoint[1];
         motor->position[2] += rotationPoint[2];
-        printf("New Position: %f, %f, %f\n", motor->position[0], motor->position[1], motor->position[2]);
-
-        result[0] = motor->axis[0] * (cosDiff + axis[0] * axis[0] * (1 - cosDiff)) + 
-            motor->axis[1] * (axis[0] * axis[1] * (1 - cosDiff) - axis[2] * sinDiff) + 
-            motor->axis[2] * (axis[0] * axis[2] * (1 - cosDiff) + axis[1] * sinDiff);
-
-        result[1] = motor->axis[0] *(axis[1] * axis[0] * (1 - cosDiff) + axis[2] * sinDiff) + 
-            motor->axis[1] * (cosDiff + axis[1] * axis[1] * (1 - cosDiff)) + 
-            motor->axis[2] * (axis[1] * axis[2] * (1 - cosDiff) - axis[0] * sinDiff);
-
-        result[2] = motor->axis[0] *(axis[2] * axis[0] * (1 - cosDiff) - axis[1] * sinDiff) + 
-            motor->axis[1] * (axis[2] * axis[1] * (1 - cosDiff) + axis[0] * sinDiff) + 
-            motor->axis[2] * (cosDiff + axis[2] * axis[2] * (1 - cosDiff));
-        motor->axis[0] = result[0];
-        motor->axis[1] = result[1];
-        motor->axis[2] = result[2];
-        printf("New Axis: %f, %f, %f\n", motor->axis[0], motor->axis[1], motor->axis[2]);
+        //printf("New Position: %f, %f, %f\n", motor->position[0], motor->position[1], motor->position[2]);
 
         motor->pivot[0] -= rotationPoint[0];
         motor->pivot[1] -= rotationPoint[1];
@@ -141,7 +126,7 @@ void rotateArm(linkedList list, int index, float angle){
         motor->pivot[0] += rotationPoint[0];
         motor->pivot[1] += rotationPoint[1];
         motor->pivot[2] += rotationPoint[2];
-        printf("New Pivot: %f, %f, %f\n", motor->pivot[0], motor->pivot[1], motor->pivot[2]);
+        //printf("New Pivot: %f, %f, %f\n", motor->pivot[0], motor->pivot[1], motor->pivot[2]);
 
 
         motorNode = nextNode(motorNode);

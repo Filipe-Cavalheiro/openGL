@@ -2,6 +2,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "cglm/include/cglm/cglm.h"
+#include "shapes.h"
 
 #define FOV M_PI/4
 #define CAMERASPEED 2.5
@@ -18,7 +19,7 @@ float toRad(float deg);
 
 //set up camera
 vec3 cameraPos    = {0.0f, 1.0f,  0.0f};
-vec3 cameraFront  = {0.0f, 0.0f, -1.0f};
+vec3 cameraFront  = {0.0f, 0.0f,  -1.0f};
 vec3 cameraUp     = {0.0f, 1.0f,  0.0f};
 
 //time variables
@@ -26,7 +27,7 @@ float deltaTime = 0;
 
 //mouse variables
 uint8_t firstMouse = 1;
-float yaw   =  -90.0f;	
+float yaw   =  -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
 float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
@@ -110,6 +111,7 @@ int main(){
 
     // build and compile shader program (cube)
     // ------------------------------------
+    //cuboid makeCuboid(vec3 size, vec3 position, vec3 angles)
     GLuint cubeVS = glCreateShader(GL_VERTEX_SHADER);
     compile_shader(&cubeVS, GL_VERTEX_SHADER, "shaders/cube.vs");
 
@@ -119,70 +121,11 @@ int main(){
     GLuint cubeShader = glCreateProgram();
     link_shader(cubeVS, cubeFS, cubeShader);
 
-    float cube_vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-
-        -0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-
-        -0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f, -0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f,  0.5f,  
-        -0.5f, -0.5f, -0.5f,  
-
-        -0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f, -0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f,  0.5f,  
-        -0.5f,  0.5f, -0.5f,  
-    };
-    unsigned int CUBE_VBO, CUBE_VAO;
-    glGenVertexArrays(1, &CUBE_VAO);
-    glGenBuffers(1, &CUBE_VBO);
-
-    glBindVertexArray(CUBE_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, CUBE_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    //Clean Up, free all Vertex Array Objects
-    glBindVertexArray(0);
+    cuboid cube = makeCuboid((vec3){0.1f, 0.1f, 0.1f}, (vec3){-1.0f, 0.2f, -1.0f}, (vec3){0.0f, 0.0f, 0.0f});
 
     //Coordinate-System variabels 
-    mat4 matrix_model;
     mat4 matrix_view;
     mat4 matrix_projection;
-    unsigned int modelLoc;
     unsigned int viewLoc;
     unsigned int projectionLoc;
     vec3 cameraTemp;
@@ -215,7 +158,6 @@ int main(){
 
         //create transformations(grid)
         glUseProgram(gridShader);
-
         glm_mat4_identity(matrix_view);
         for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
         glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
@@ -232,27 +174,7 @@ int main(){
         glDisable(GL_BLEND);
 
         //create transformations(cube)
-        glUseProgram(cubeShader);
-
-        glm_mat4_identity(matrix_model);
-        glm_translate(matrix_model, (vec3){1.0f, 0.5f, 1.0f});
-        modelLoc = glGetUniformLocation(cubeShader, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, *matrix_model);
-
-        // calculate the model matrix for each object and pass it to shader before drawing
-        glm_mat4_identity(matrix_view);
-        for(int i = 0; i < 3; ++i){cameraTemp[i] = cameraPos[i] + cameraFront[i];}
-        glm_lookat(cameraPos, cameraTemp, cameraUp, matrix_view);
-        viewLoc = glGetUniformLocation(cubeShader, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, *matrix_view);
-
-        glm_mat4_identity(matrix_projection);
-        glm_perspective(FOV, (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f, matrix_projection);
-        projectionLoc = glGetUniformLocation(cubeShader, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, *matrix_projection);
-
-        glBindVertexArray(CUBE_VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, cube);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -265,8 +187,6 @@ int main(){
     glDeleteVertexArrays(1, &GRID_VAO);
     glDeleteBuffers(1, &GRID_VBO);
     glDeleteBuffers(1, &GRID_EBO);
-    glDeleteVertexArrays(1, &CUBE_VAO);
-    glDeleteBuffers(1, &CUBE_VBO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

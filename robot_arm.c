@@ -4,6 +4,7 @@
 #include "cglm/include/cglm/cglm.h"
 #include "shapes.h"
 #include "../Data-structures-in-C/linkedList.h"
+#include <time.h>
 #include <math.h>
 #include "motor.h"
 
@@ -19,6 +20,7 @@ float toRad(float deg);
 void set_currently_pressed_key(uint8_t key);
 void clear_currently_pressed_key(uint8_t key);
 uint8_t get_currently_pressed_key(uint8_t key);
+float* createRandomPoint(float radius);
 
 // settings
 #define SCR_WIDTH 800
@@ -34,7 +36,7 @@ float deltaTime = 0;
 
 //mouse variables
 uint8_t firstMouse = 1;
-float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float yaw   =  -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
 float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
@@ -131,17 +133,17 @@ int main(){
     link_shader(cubeVS, cubeFS, cubeShader);
 
     linkedList list = makeLinkedList();
-    int type[4] = {0, 0, 1, 1};
+    int type[3] = {0, 0, 1};
     append(list, makeCuboid((vec3){0.8f, 0.2f, 0.8f}, (vec3){0.0f, 0.2f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f})); 
     append(list, makeCuboid((vec3){0.2f, 1.0f, 0.2f}, (vec3){0.0f, 1.4f, 0.0f}, (vec3){0.0f, 0.0f, 0.0f})); 
     append(list, makeMotor((vec3){1.0f, 0.2f, 0.2f}, (vec3){0.8f, 2.4f, 0.0f}, (vec3){0, 1, 0}, (vec3){0, 2.4f, 0}, 0.0f));
-    append(list, makeMotor((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){1, 0, 0}, (vec3){1.9f, 2.4f, 0.0f}, 0.0f));
     /*
-    motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){0, 1, 0}, 0);
-    append(list, motor); 
-    motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 0, 0}, 0);
-    append(list, motor);
-    */
+       append(list, makeMotor((vec3){0.2f, 0.2f, 1.0f}, (vec3){1.9f, 2.4f, 0.8f}, (vec3){1, 0, 0}, (vec3){1.9f, 2.4f, 0.0f}, 0.0f));
+       motor = makeRobotPart((vec3){0.2f, 1.0f, 0.2f}, (vec3){2.3f, 3.2f, 1.6f}, (vec3){0, 1, 0}, 0);
+       append(list, motor); 
+       motor = makeRobotPart((vec3){0.4f, 0.2f, 0.2f}, (vec3){2.3f, 4.4f, 1.6f}, (vec3){0, 0, 0}, 0);
+       append(list, motor);
+       */
     //Coordinate-System variabels 
     mat4 matrix_view;
     mat4 matrix_projection;
@@ -153,8 +155,14 @@ int main(){
     float currentFrame;
     float lastFrame = 0;
 
-    vec3 axis = {0, 0, 0};
-    int count = 3;
+    float* randomPos = createRandomPoint(2);
+    vec3 randomPosInVec3 = {randomPos[0], randomPos[1], randomPos[2]};
+    cuboid randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, randomPosInVec3, (vec3){0, 0, 0});
+    printf("randomPos x: %f\n", randomPosInVec3[0]);
+    free(randomPos);
+
+    //cuboid makeCuboid(vec3 size, vec3 position, vec3 angles)
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)){
@@ -195,27 +203,23 @@ int main(){
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glDisable(GL_BLEND);
 
-        if(arms[0] == 1){
-            count = 2;
-            node elemNode = getIndex(list, 2);
-            motor elem = getElem_node(elemNode);
-            axis[0] = elem->axis[0];
-            axis[1] = elem->axis[1];
-            axis[2] = elem->axis[2];
-            rotateArm(list, 2, armsAngle[0]);
-            arms[0] = 0;
-        }
-        if(arms[1] == 1){
-            count = 3;
-            node elemNode = getIndex(list, 3);
-            motor elem = getElem_node(elemNode);
-            axis[0] = elem->axis[0];
-            axis[1] = elem->axis[1];
-            axis[2] = elem->axis[2];
-            rotateArm(list, 3, armsAngle[1]);
-            arms[1] = 0;
-        }
+        renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, randomCube);
+        float armsXPos =  roundf(cos(armsAngle[0])*20)/10;
+        float armsYPos = roundf(-sin(armsAngle[0])*20)/10;
+        printf("angle x: %f, cube x: %f, angle y: %f, cube y: %f\n", armsXPos, randomPosInVec3[0], armsYPos, randomPosInVec3[2]);
+        if((armsXPos != randomPosInVec3[0]) || (armsYPos != randomPosInVec3[2])){
+            armsAngle[0] += 0.05;
+        }else{    
 
+            randomPos = createRandomPoint(2);
+            randomPosInVec3[0] = randomPos[0];
+            randomPosInVec3[1] = randomPos[1];
+            randomPosInVec3[2] = randomPos[2];
+            randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, randomPosInVec3, (vec3){0, 0, 0});
+            printf("randomPos x: %f\n", randomPosInVec3[0]);
+            free(randomPos);
+        }  
+        rotateArm(list, 2, armsAngle[0]);
         node armNode = getHead(list);
         int i = 0;
         while(armNode != NULL){
@@ -301,16 +305,6 @@ void processInput(GLFWwindow *window){
             set_currently_pressed_key('l');
         }
     }
-    if(get_currently_pressed_key('k') && glfwGetKey(window, GLFW_KEY_K) == GLFW_RELEASE){
-        clear_currently_pressed_key('k');
-    }
-    if(glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
-        if(!get_currently_pressed_key('k')){    
-            arms[1] = 1;
-            armsAngle[1] += M_PI/4;
-            set_currently_pressed_key('k');
-        }
-    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -387,4 +381,16 @@ uint8_t get_currently_pressed_key(uint8_t key){
         return currently_pressed_keys[27];
     }
     return currently_pressed_keys[key - 'a'];
+}
+
+float* createRandomPoint(float radius){
+    float* randomPoint = (float*)malloc(sizeof(float)*3);
+
+    srand(time(NULL));
+    double theta = ((double)rand() / RAND_MAX) * 2 * M_PI;
+
+    randomPoint[0] = roundf(radius * cos(theta)*10)/10;
+    randomPoint[2] = roundf(radius * sin(theta)*10)/10;
+    randomPoint[1] = 2.5;
+    return randomPoint;
 }
