@@ -41,7 +41,7 @@ float pitch =  0.0f;
 float lastX =  400.0f;
 float lastY =  300.0f;
 
-float armsAngle[4] = {0,0,0,0};
+float armsAngle[4] = {M_PI/2,0,0,0};
 uint8_t arms[4] = {0,0,0,0};
 uint8_t currently_pressed_keys[30] = {0};
 
@@ -156,12 +156,12 @@ int main(){
     float lastFrame = 0;
 
     float* randomPos = createRandomPoint(2);
-    vec3 randomPosInVec3 = {randomPos[0], randomPos[1], randomPos[2]};
-    cuboid randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, randomPosInVec3, (vec3){0, 0, 0});
-    printf("randomPos x: %f\n", randomPosInVec3[0]);
+    vec3 boxXYZPos = {randomPos[0], randomPos[1], randomPos[2]};
+    cuboid randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, boxXYZPos, (vec3){0, 0, 0});
+    printf("randomPos x: %f\n", boxXYZPos[0]);
     free(randomPos);
-
-    //cuboid makeCuboid(vec3 size, vec3 position, vec3 angles)
+    uint8_t firstTime = 1;
+    float repeat = 0;
 
     // render loop
     // -----------
@@ -204,22 +204,43 @@ int main(){
         glDisable(GL_BLEND);
 
         renderCuboid(cameraPos, cameraFront, cameraUp, cubeShader, randomCube);
-        float armsXPos =  roundf(cos(armsAngle[0])*20)/10;
-        float armsYPos = roundf(-sin(armsAngle[0])*20)/10;
-        printf("angle x: %f, cube x: %f, angle y: %f, cube y: %f\n", armsXPos, randomPosInVec3[0], armsYPos, randomPosInVec3[2]);
-        if((armsXPos != randomPosInVec3[0]) || (armsYPos != randomPosInVec3[2])){
-            armsAngle[0] += 0.05;
-        }else{    
-
+        float armXPos =  roundf(cos(armsAngle[0])*2);
+        float armYPos = roundf(sin(armsAngle[0])*2);
+        vec2 armPos = {armXPos, armYPos};
+        vec2 boxPos = {boxXYZPos[0], boxXYZPos[2]};
+        float cubeAngle = atan(boxXYZPos[2]/boxXYZPos[0]);
+        if(boxXYZPos[0] <= 0)
+            cubeAngle += M_PI;
+        else if((boxXYZPos[0] >= 0) && (boxXYZPos[2] <= 0))
+            cubeAngle += 2*M_PI;
+        if(firstTime == 0){
+            armsAngle[0] += repeat;
+        }else{
+            float diff = cubeAngle - armsAngle[0];
+            if(diff > 0)
+                repeat = 0.05;
+            else 
+                repeat = -0.05;
+            if (abs(diff) > M_PI)
+                repeat = -repeat; 
+            printf("cube pos X: %f, Y: %f, arm pos X: %f, Y: %f\n", boxXYZPos[0], boxXYZPos[2], armXPos, armYPos);
+            printf("Angle cube: %f, Angle arm: %f, difference: %f, repeat: %f\n", cubeAngle, armsAngle[0], diff, repeat);
+            firstTime = 0;
+        }
+        if(armsAngle[0] > 2*M_PI)
+            armsAngle[0] -= 2*M_PI;
+        else if(armsAngle[0] < 0)
+            armsAngle[0] += 2*M_PI;
+        if((cubeAngle - armsAngle[0] < 0.1) && (cubeAngle - armsAngle[0] > -0.1)){    
             randomPos = createRandomPoint(2);
-            randomPosInVec3[0] = randomPos[0];
-            randomPosInVec3[1] = randomPos[1];
-            randomPosInVec3[2] = randomPos[2];
-            randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, randomPosInVec3, (vec3){0, 0, 0});
-            printf("randomPos x: %f\n", randomPosInVec3[0]);
+            boxXYZPos[0] = randomPos[0];
+            boxXYZPos[1] = randomPos[1];
+            boxXYZPos[2] = randomPos[2];
+            randomCube = makeCuboid((vec3){0.1, 0.1, 0.1}, boxXYZPos, (vec3){0, 0, 0});
             free(randomPos);
-        }  
-        rotateArm(list, 2, armsAngle[0]);
+            firstTime = 1;
+        }
+
         node armNode = getHead(list);
         int i = 0;
         while(armNode != NULL){

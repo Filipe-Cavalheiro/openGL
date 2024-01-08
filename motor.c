@@ -68,6 +68,7 @@ void renderMotor(vec3 cameraPos, vec3 cameraFront, vec3 cameraUp, unsigned int s
 }
 
 void rotateArm(linkedList list, int index, float angle){
+    angle = -angle;
     node motorNode = getIndex(list, index);
     motor motor = getElem_node(motorNode);
     float rotationPoint[3] = {motor->pivot[0], motor->pivot[1], motor->pivot[2]};
