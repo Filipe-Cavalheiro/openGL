@@ -1,3 +1,6 @@
 # openGL
+An agglomeration of half finished project with the main focus with working with opengl
 
-A 3d map of a cars distance and position reading
+including:
+- A robot arm
+- SLAM robot mapping
